@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#214e48">
+  <meta name="description" content="A local-first canvas for biblical discourse analysis.">
+  <title>Discourse · Analysis canvas</title>
+  <link rel="stylesheet" href="./css/workbench.css">
+  <script type="module" src="./js/app.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="./"><span aria-hidden="true">⌜</span> Discourse</a>
+    <button id="toggle-projects" aria-expanded="true" aria-controls="project-drawer">Projects</button>
+    <div class="active-heading"><h1 id="active-project-name">Analysis canvas</h1><span id="source-description"></span></div>
+    <div id="project-actions" class="toolbar" hidden><button id="export-project">Export backup</button><button id="delete-project" class="quiet danger">Delete</button></div>
+  </header>
+
+  <aside id="project-drawer" class="project-panel" aria-labelledby="projects-title">
+    <div class="drawer-heading"><h2 id="projects-title">Projects</h2><button id="close-projects" class="quiet" aria-label="Close projects">✕</button></div>
+    <section class="edition-section" aria-labelledby="edition-title">
+      <h3 id="edition-title" class="section-label">Open a biblical passage</h3>
+      <form id="edition-browser" class="stack">
+        <label for="edition-select">Working edition</label><select id="edition-select" disabled></select>
+        <label for="book-select">Book</label><select id="book-select" disabled></select>
+        <div class="reference-inputs"><label>Chapter<select id="chapter-select" disabled></select></label><label>From verse<select id="verse-start" disabled></select></label><label>To verse<select id="verse-end" disabled></select></label></div>
+        <label for="analysis-name">Analysis name <span class="subtle">(optional)</span></label><input id="analysis-name" maxlength="120" placeholder="Name this analysis">
+        <button id="open-edition-passage" type="submit" class="primary" disabled>Start passage analysis</button>
+      </form>
+      <p id="edition-status" class="small subtle" role="status">Loading the edition library…</p>
+      <details class="edition-information"><summary>Edition sources &amp; coverage</summary><div id="edition-information" class="small"></div><a class="small" href="./data-sources.html">Bundled data attribution ↗</a></details>
+      <label class="file-button edition-import" for="edition-file">Import edition corpus<input id="edition-file" type="file" accept=".json,application/json"></label>
+    </section>
+    <details class="practice-tools"><summary>Practice texts &amp; single-passage import</summary>
+    <form id="create-project" class="stack">
+      <label for="project-name">New project name</label><input id="project-name" required maxlength="120" placeholder="e.g. A first passage">
+      <label for="sample-language">Practice text</label>
+      <select id="sample-language"><option value="en">English</option><option value="grc">Greek</option><option value="hbo">Hebrew</option></select>
+      <button class="primary" type="submit">Create practice project</button>
+    </form>
+    <p class="small subtle">Authored practice texts, not Bible editions.</p>
+    <div class="import-actions">
+      <label class="file-button" for="passage-file">Import passage JSON<input id="passage-file" type="file" accept=".json,application/json"></label>
+    </div>
+    </details>
+    <label class="file-button backup-import" for="project-file">Open project backup<input id="project-file" type="file" accept=".json,application/json"></label>
+    <h3 class="section-label">Saved on this browser</h3><nav id="project-list" aria-label="Saved projects"></nav>
+    <p id="storage-status" class="small subtle" role="status">Opening local storage…</p>
+    <a class="small" href="./guide.html">Canvas controls &amp; import format ↗</a>
+  </aside>
+
+  <main id="main-content">
+    <section id="welcome" class="welcome">
+      <p class="eyebrow">A workspace for the passage</p><h2>Think with the words.<br>Build on the canvas.</h2>
+      <p>Arrange words on a grid. Mark propositions, nest brackets, and connect ideas in the same view.</p>
+      <button id="start-project" class="primary">Start a project</button>
+    </section>
+    <section id="workbench" hidden aria-label="Analysis workspace">
+      <div class="canvas-toolbar">
+        <div class="toolbar word-actions"><span id="selection-count" class="small">Select words on the canvas</span><button id="add-proposition" class="primary" disabled>Create proposition</button><button id="clear-selection" class="quiet">Clear</button></div>
+        <div class="toolbar proposition-actions"><button id="open-group" disabled>Group selected</button><button id="open-relation" disabled>Connect selected</button></div>
+        <div class="toolbar view-actions"><button id="undo" disabled aria-label="Undo last edit">Undo</button><button id="redo" disabled aria-label="Redo last edit">Redo</button><button id="reset-layout" class="quiet">Reset positions</button><label class="zoom-label">Zoom<select id="canvas-zoom"><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label><button id="toggle-inspector" aria-expanded="false" aria-controls="context-drawer">Inspector</button></div>
+      </div>
+      <div class="canvas-caption"><span id="passage-reference"></span><span>Drag words to snap · Arrow keys to nudge · Shift-click to select a range</span><details class="source-preview"><summary>Original text</summary><p id="original-text" dir="auto"></p></details></div>
+      <div class="canvas-shell">
+        <div id="canvas-viewport" tabindex="0" aria-label="Scrollable analysis canvas"><div id="canvas-sizer"><div id="analysis-canvas"></div></div></div>
+        <aside id="context-drawer" class="context-drawer" hidden aria-label="Contextual inspector">
+        <div class="drawer-heading"><h2>Inspector</h2><button class="quiet" id="close-inspector" aria-label="Close inspector">✕</button></div>
+        <p id="inspector-empty" class="small subtle">Select a word for its details. Select propositions to group them or connect their ideas.</p>
+        <form id="group-form" class="canvas-popover" hidden>
+          <div class="popover-heading"><strong>Group propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close group editor">✕</button></div>
+          <label for="group-label">Group label</label><input id="group-label" maxlength="120" placeholder="e.g. Main assertion"><button class="primary" type="submit">Apply group</button>
+        </form>
+        <form id="relation-form" class="canvas-popover" hidden>
+          <div class="popover-heading"><strong>Connect propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close relation editor">✕</button></div>
+          <div class="relation-endpoints"><label>From<select id="relation-from" required></select></label><span aria-hidden="true">→</span><label>To<select id="relation-to" required></select></label></div>
+          <label for="relation-label">Relationship</label><input id="relation-label" required maxlength="120" placeholder="e.g. supports"><button class="primary" type="submit">Add relation</button>
+        </form>
+        <section id="word-inspector" class="canvas-popover inspector" hidden aria-label="Word details"><strong>Word details</strong><div id="word-details"></div></section>
+        </aside>
+      </div>
+      <div class="canvas-status"><span id="assignment-summary"></span><span id="relation-summary">Relationships appear beside their propositions.</span><button id="remove-relation" class="quiet danger" hidden>Remove focused relation</button></div>
+    </section>
+    <p id="feedback" role="status" aria-live="polite">Choose a practice text or import a passage to begin.</p>
+  </main>
+</body>
+</html>

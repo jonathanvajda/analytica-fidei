@@ -1,0 +1,50 @@
+{
+  "sourceRepository": "reasonlynx",
+  "files": [
+    {
+      "path": "docs/js/vendor/linguistic-adapters/document-adapter.js",
+      "sourcePath": "packages/linguistic-adapters/src/document-adapter.js",
+      "sha256": "4496e37280edae598fadaac8e21d74a24f5d8b509c43fba12a5f59614526cc7b"
+    },
+    {
+      "path": "docs/js/vendor/linguistic-adapters/index.js",
+      "sourcePath": "packages/linguistic-adapters/src/index.js",
+      "sha256": "980979a50003933720e61455ad8088f7d780cec3d6e432c66ee923ba2b2de4ee"
+    },
+    {
+      "path": "docs/js/vendor/linguistic-adapters/lexical-annotations.js",
+      "sourcePath": "packages/linguistic-adapters/src/lexical-annotations.js",
+      "sha256": "1be0c2fea5e557ebe3ca839d34c258578634ad2ec53b22d46d0a397cd3da5cfd"
+    },
+    {
+      "path": "docs/js/vendor/linguistic-adapters/source-model.js",
+      "sourcePath": "packages/linguistic-adapters/src/source-model.js",
+      "sha256": "38105e8ef5770f21528ff764ce242eec1f4cbef6d9da00e94ef1282101944b7a"
+    },
+    {
+      "path": "docs/js/vendor/linguistic-adapters/text-spans.js",
+      "sourcePath": "packages/linguistic-adapters/src/text-spans.js",
+      "sha256": "b275a1be46c005cc6e172df250be55a5ea0488eb89466c7f685dfd15e4595c71"
+    },
+    {
+      "path": "docs/js/vendor/linguistic-adapters/token-adapters.js",
+      "sourcePath": "packages/linguistic-adapters/src/token-adapters.js",
+      "sha256": "d959689b00afe28321ddac67009e7250ae06eadf1ea515386446935087cc954f"
+    },
+    {
+      "path": "docs/js/vendor/linguistic-adapters/validation.js",
+      "sourcePath": "packages/linguistic-adapters/src/validation.js",
+      "sha256": "673f3f07b9ab5f5a9614b9b8d2aac4b7b057ab7c4e37659c9c33c6e7e134cbff"
+    },
+    {
+      "path": "docs/js/vendor/indexeddb/indexeddb-adapter.js",
+      "sourcePath": "packages/indexeddb-data-management/src/indexeddb-adapter.js",
+      "sha256": "4cd98e215470af353402d32fef14822e5f3dcc20295547e7f624e76c2e052879"
+    },
+    {
+      "path": "docs/js/vendor/indexeddb/storage-error.js",
+      "sourcePath": "packages/indexeddb-data-management/src/storage-error.js",
+      "sha256": "13ab5efea59db5712d8c9be69b155cca414df36ee4b7a2eaa1a6f3b3c8d347ba"
+    }
+  ]
+}

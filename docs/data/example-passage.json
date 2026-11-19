@@ -1,0 +1,10 @@
+{
+  "source": { "sourceId": "practice-import", "version": "1", "language": "en", "provenance": { "providerId": "local-example" } },
+  "unitKey": "practice:1",
+  "reference": { "display": "Practice phrase, not scripture" },
+  "text": "People listen.",
+  "records": [
+    { "id": "w1", "text": "People", "start": 0, "end": 6 },
+    { "id": "w2", "text": "listen", "start": 7, "end": 13 }
+  ]
+}
