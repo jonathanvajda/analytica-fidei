@@ -311,6 +311,13 @@ export function addAnalysisGroup(project, { id, propositionIds, label = '' }) {
   return { ...project, groups: [...project.groups, { id, propositionIds: [...propositionIds], label: label.trim() }] };
 }
 
+/** Revise a discourse-segment label while retaining identity, membership, and nesting. */
+export function updateAnalysisGroup(project, { id, label }) {
+  requireAnalysisCondition(typeof label === 'string', 'Group label must be text.');
+  requireAnalysisCondition(project.groups.some(item => item.id === id), 'Choose a known discourse group.');
+  return { ...project, groups: project.groups.map(item => item.id === id ? { ...item, label: label.trim() } : item) };
+}
+
 /** Semantic edges are separate from primary bracket containment. They never force crossing lines.
  * @param {AnalysisProject} project Current document.
  * @param {AnalysisRelation} input Proposed directed edge.

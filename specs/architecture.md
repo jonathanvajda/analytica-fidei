@@ -129,6 +129,9 @@ UR-38 now has a connected-argument inspection mode. Starting from a focused
 relationship, it highlights all propositions and semantic edges in that connected
 component without mutating the graph or primary bracket outline.
 
+UR-37/74 group labels can be revised through the validated history path without
+recreating the stable group or changing its ordered membership and nesting.
+
 UR-48 has a persistent explicit light/dark theme covering the current interactive
 workbench. Publication/export theme consistency remains future work under UR-59.
 UR-43 has an initial optional lexical-gloss canvas layer. It renders only supplied

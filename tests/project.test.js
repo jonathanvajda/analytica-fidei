@@ -1,4 +1,4 @@
-import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup,
+import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup, updateAnalysisGroup,
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, addAnalysisPropositionAnchor,
@@ -88,10 +88,12 @@ test('laminar groups derive one ordered primary tree', () => {
   let project = withPropositions();
   project = addAnalysisGroup(project, { id: 'inner', propositionIds: ['p1', 'p2'], label: 'Support' });
   project = addAnalysisGroup(project, { id: 'outer', propositionIds: ['p0', 'p1', 'p2', 'p3'] });
+  project = updateAnalysisGroup(project, { id: 'inner', label: 'Supporting claim' });
   const tree = buildAnalysisOutline(project);
   expect(tree.map(item => item.id)).toEqual(['outer']);
   expect(tree[0].children.map(item => item.id)).toEqual(['p0', 'inner', 'p3']);
   expect(tree[0].children[1].children.map(item => item.id)).toEqual(['p1', 'p2']);
+  expect(tree[0].children[1].label).toBe('Supporting claim');
 });
 
 test('crossing, nonconsecutive, duplicate, reversed, and singleton groups are rejected', () => {

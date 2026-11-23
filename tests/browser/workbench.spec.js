@@ -142,6 +142,11 @@ test('crossing groups are rejected while nested groups stay in the same canvas',
   await selectPropositions(page, [1, 2, 3]);
   await applyGroup(page);
   await expect(page.locator('.bracket')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Edit group Discourse group' }).click();
+  await page.locator('#group-label').fill('Main development');
+  await page.getByRole('button', { name: 'Save group label' }).click();
+  await expect(page.locator('.group-badge')).toContainText('Main development');
+  await expect(page.locator('.bracket')).toHaveCount(1);
   await selectPropositions(page, [2, 3, 4]);
   await applyGroup(page);
   await expect(page.locator('#feedback')).toContainText('cross an existing bracket');

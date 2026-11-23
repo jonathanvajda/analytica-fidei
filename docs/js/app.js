@@ -1,5 +1,5 @@
 import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, addAnalysisProposition,
-  removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
+  removeAnalysisProposition, addAnalysisGroup, updateAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
   DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
   addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
@@ -52,6 +52,7 @@ let focusedRelationId = null;
 let traceArgument = false;
 let editingRelationId = null;
 let editingNoteId = null;
+let editingGroupId = null;
 let operationQueue = Promise.resolve();
 let undoStack = [];
 let redoStack = [];
@@ -164,6 +165,14 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
     await persistProject(removeAnalysisProposition(project, id));
     report('Proposition removed. Its words remain on the canvas; dependent groups and relations were removed.');
   }),
+  onEditGroup: id => {
+    const group = project.groups.find(item => item.id === id);
+    editingGroupId = id;
+    $('#group-label').value = group.label;
+    $('#group-form-title').textContent = 'Edit discourse group';
+    $('#save-group').textContent = 'Save group label';
+    openCanvasEditor('#group-form');
+  },
   onRemoveGroup: id => runUiOperation(async () => {
     await persistProject({ ...project, groups: project.groups.filter(item => item.id !== id) });
     report('Group removed. Propositions and relationships were retained.');
@@ -348,14 +357,24 @@ $('#return-source').addEventListener('click', () => runUiOperation(async () => {
   await persistProject(next); report('Selected words returned to unassigned source staging.');
 }));
 
-$('#open-group').addEventListener('click', () => openCanvasEditor('#group-form'));
+$('#open-group').addEventListener('click', () => {
+  editingGroupId = null;
+  $('#group-label').value = '';
+  $('#group-form-title').textContent = 'Group propositions';
+  $('#save-group').textContent = 'Apply group';
+  openCanvasEditor('#group-form');
+});
 $('#group-form').addEventListener('submit', event => {
   event.preventDefault();
   runUiOperation(async () => {
+    const revised = Boolean(editingGroupId);
     const propositionIds = project.propositions.filter(item => selectedPropositions.has(item.id)).map(item => item.id);
-    const next = addAnalysisGroup(project, { id: crypto.randomUUID(), propositionIds, label: $('#group-label').value });
+    const next = editingGroupId
+      ? updateAnalysisGroup(project, { id: editingGroupId, label: $('#group-label').value })
+      : addAnalysisGroup(project, { id: crypto.randomUUID(), propositionIds, label: $('#group-label').value });
+    editingGroupId = null;
     selectedPropositions.clear(); $('#group-label').value = ''; closeEditors();
-    await persistProject(next); report('Group created. Its bracket is shown beside the words.');
+    await persistProject(next); report(revised ? 'Discourse group label updated.' : 'Group created. Its bracket is shown beside the words.');
   });
 });
 

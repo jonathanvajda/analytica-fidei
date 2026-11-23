@@ -25,7 +25,7 @@ function positionElement(element, left, top, width) {
  * @returns {{render:function(object):void,updateSelection:function(Set):void,setZoom:function(number):void,fitToView:function():number,focusWord:function(string):void,getWidths:function():object}}
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
-  onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onRemovePropositionAnchor,
+  onMoveWord, onToggleProposition, onRemoveProposition, onEditGroup, onRemoveGroup, onRemovePropositionAnchor,
   onDetachConstituent, onEditNote, onRemoveNote, onFocusRelation, onRemoveRelationAnchor }) {
   let model;
   let state;
@@ -139,10 +139,12 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function renderGroupLabels() {
     return model.groups.map(group => {
+      const edit = el('button', { text: 'Edit', 'aria-label': `Edit group ${group.label || 'Discourse group'}` });
+      edit.addEventListener('click', () => onEditGroup(group.id));
       const remove = el('button', { text: '×', 'aria-label': `Ungroup ${group.label || 'propositions'}` });
       remove.addEventListener('click', () => onRemoveGroup(group.id));
       return positionElement(el('div', { className: 'group-badge', title: group.label || 'Discourse group' },
-        [el('span', { text: group.label || 'Discourse group' }), remove]), model.gutter, group.top - 12);
+        [el('span', { text: group.label || 'Discourse group' }), edit, remove]), model.gutter, group.top - 12);
     });
   }
 
