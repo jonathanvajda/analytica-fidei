@@ -57,6 +57,7 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await expect(page.locator('.relation-edge')).toHaveCount(1);
   await expect(page.locator('#context-drawer')).toBeHidden();
   const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.getByRole('button', { name: 'Export backup' }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toBe('Test_analysis.json');
@@ -72,6 +73,23 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await expect(page.locator('.relation-edge')).toHaveCount(1);
   await page.screenshot({ path: testInfo.outputPath('integrated-canvas.png'), fullPage: true });
   expect(errors).toEqual([]);
+});
+
+test('project data tools preview and download a Mermaid semantic flowchart', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 3);
+  await createProposition(page, 3, 6);
+  await selectPropositions(page, [1, 2]);
+  await page.getByRole('button', { name: 'Connect selected', exact: true }).click();
+  await page.locator('#relation-type').selectOption('evidence');
+  await page.getByRole('button', { name: 'Add relation', exact: true }).click();
+  await page.getByRole('button', { name: 'Projects', exact: true }).click();
+  await page.getByRole('button', { name: 'Preview Mermaid' }).click();
+  await expect(page.locator('#mermaid-source')).toContainText('flowchart TD');
+  await expect(page.locator('#mermaid-source')).toContainText('Evidence');
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download Mermaid' }).click();
+  expect((await downloadPromise).suggestedFilename()).toBe('Test_analysis_analysis.mmd');
 });
 
 test('crossing groups are rejected while nested groups stay in the same canvas', async ({ page }) => {
@@ -120,6 +138,7 @@ test('canvas fills the viewport and can grow into horizontally scrollable space'
   const before = await viewport.evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
   const canvasWidth = await canvas.evaluate(element => element.getBoundingClientRect().width);
   expect(canvasWidth).toBeGreaterThanOrEqual(before.clientWidth - 1);
+  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
   await page.getByRole('button', { name: 'Widen canvas', exact: true }).click();
   await expect(page.locator('#feedback')).toContainText('Scroll horizontally');
   const after = await viewport.evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
@@ -132,6 +151,7 @@ test('canvas fills the viewport and can grow into horizontally scrollable space'
 
 test('dark theme covers the workbench and persists across reload', async ({ page }) => {
   await createPracticeProject(page);
+  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
   await page.getByRole('button', { name: 'Dark theme', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await expect(page.getByRole('button', { name: 'Light theme', exact: true })).toHaveAttribute('aria-pressed', 'true');
@@ -143,6 +163,7 @@ test('dark theme covers the workbench and persists across reload', async ({ page
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
+  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Light theme', exact: true })).toBeVisible();
 });
 
@@ -275,6 +296,7 @@ test('an edge word can be dragged out of a proposition or returned with the tool
 
 test('drag coordinates respect zoom and keyboard nudges use the same grid', async ({ page }) => {
   await createPracticeProject(page);
+  await page.getByRole('button', { name: 'Open settings', exact: true }).click();
   await page.locator('#canvas-zoom').selectOption('1.25');
   const word = page.locator('.canvas-word').first();
   await dragWord(page, word, 90, 65);
@@ -297,7 +319,7 @@ test('range selection and optional inspector do not require a step workflow', as
   await expect(page.locator('#word-details')).toContainText('No lexical annotations supplied');
   await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
   await page.locator('.canvas-word').first().click();
-  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await expect(page.locator('#context-drawer')).toBeVisible();
   await expect(page.locator('#word-details')).toContainText('No lexical annotations supplied');
   await page.getByRole('button', { name: 'Close inspector', exact: true }).click();
   await expect(page.locator('#context-drawer')).toBeHidden();

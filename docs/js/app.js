@@ -6,10 +6,11 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
-import { createUiElement as el, downloadProjectBackup } from './ui/dom.js';
+import { createUiElement as el, downloadProjectBackup, downloadTextFile, safeFileStem } from './ui/dom.js';
 import { createAnalysisCanvasController } from './ui/analysis-canvas.js';
 import { createEditionLibrary, loadBundledEditionCatalog } from './adapters/edition-library.js';
 import { normalizeEditionCorpus } from './core/editions.js';
+import { createAnalysisMermaid } from './core/mermaid-export.js';
 import { createEditionBrowser } from './ui/edition-browser.js';
 
 const $ = selector => document.querySelector(selector);
@@ -69,6 +70,11 @@ function showProjectDrawer(show) {
   $('#toggle-projects').setAttribute('aria-expanded', String(show));
 }
 
+function closeSettings() {
+  $('#settings-panel').hidden = true;
+  $('#toggle-settings').setAttribute('aria-expanded', 'false');
+}
+
 function closeEditors() {
   for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#role-form', '#note-form', '#word-inspector']) $(selector).hidden = true;
   $('#context-drawer').hidden = true;
@@ -77,6 +83,7 @@ function closeEditors() {
 }
 
 function showInspector() {
+  closeSettings();
   $('#context-drawer').hidden = false;
   $('#toggle-inspector').setAttribute('aria-expanded', 'true');
 }
@@ -100,13 +107,14 @@ async function persistProject(next, { history = true } = {}) {
 
 async function activateProject(next) {
   selectedTokens.clear(); selectedPropositions.clear(); selectionAnchor = null; focusedRelationId = null;
-  undoStack = []; redoStack = []; closeEditors();
+  undoStack = []; redoStack = []; closeEditors(); closeSettings();
   if (!next.layout) {
     const available = $('#main-content').getBoundingClientRect().width - 32;
     const columns = Math.max(8, Math.floor((available - 158) / 24));
     next = { ...next, layout: { columns, words: {} } };
   }
   showProjectDrawer(false);
+  $('#mermaid-preview').hidden = true;
   await persistProject(next, { history: false });
 }
 
@@ -142,6 +150,7 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
   onToggleProposition: (id, checked) => {
     if (checked) selectedPropositions.add(id); else selectedPropositions.delete(id);
     updateCanvasActions();
+    if (checked) { closeEditors(); showInspector(); }
   },
   onRemoveProposition: id => runUiOperation(async () => {
     selectedPropositions.delete(id); focusedRelationId = null;
@@ -233,7 +242,7 @@ function selectCanvasWord(id, extend) {
   }
   // Keep the word DOM stable so double-clicks, focus and touch targets remain intact.
   canvas.updateSelection(selectedTokens); updateCanvasActions(); canvas.focusWord(id);
-  if (!$('#context-drawer').hidden && $('#group-form').hidden && $('#relation-form').hidden && $('#anchor-form').hidden && $('#role-form').hidden && $('#note-form').hidden) inspectCanvasWord(id);
+  if (selectedTokens.has(id)) inspectCanvasWord(id);
 }
 
 function inspectCanvasWord(id) {
@@ -406,6 +415,14 @@ $('#toggle-inspector').addEventListener('click', () => {
   const id = [...selectedTokens].at(-1);
   if (id) inspectCanvasWord(id); else showInspector();
 });
+$('#toggle-settings').addEventListener('click', () => {
+  const show = $('#settings-panel').hidden;
+  if (show) closeEditors();
+  $('#settings-panel').hidden = !show;
+  $('#toggle-settings').setAttribute('aria-expanded', String(show));
+  if (show) $('#canvas-zoom').focus();
+});
+$('#close-settings').addEventListener('click', () => { closeSettings(); $('#toggle-settings').focus(); });
 $('#canvas-zoom').addEventListener('change', event => canvas.setZoom(Number(event.target.value)));
 $('#theme-toggle').addEventListener('click', () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
@@ -452,7 +469,7 @@ function travelCanvasHistory(redo = false) {
 $('#undo').addEventListener('click', () => travelCanvasHistory());
 $('#redo').addEventListener('click', () => travelCanvasHistory(true));
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { closeEditors(); showProjectDrawer(false); }
+  if (event.key === 'Escape') { closeEditors(); closeSettings(); showProjectDrawer(false); }
   if (!project || event.target.matches('input,textarea,select') || event.target.isContentEditable) return;
   if ((event.ctrlKey || event.metaKey) && ['z', 'y'].includes(event.key.toLowerCase())) {
     event.preventDefault(); travelCanvasHistory(event.key.toLowerCase() === 'y' || event.shiftKey);
@@ -460,6 +477,17 @@ document.addEventListener('keydown', event => {
 });
 
 $('#export-project').addEventListener('click', () => { downloadProjectBackup(project); report('JSON backup exported, including word positions.'); });
+$('#preview-mermaid').addEventListener('click', () => {
+  $('#mermaid-source').textContent = createAnalysisMermaid(project);
+  $('#mermaid-preview').hidden = false;
+  $('#mermaid-source').focus();
+  report('Mermaid semantic source generated.');
+});
+$('#close-mermaid-preview').addEventListener('click', () => { $('#mermaid-preview').hidden = true; });
+$('#download-mermaid').addEventListener('click', () => {
+  downloadTextFile(createAnalysisMermaid(project), `${safeFileStem(project.name)}_analysis.mmd`);
+  report('Mermaid semantic flowchart exported.');
+});
 $('#delete-project').addEventListener('click', () => runUiOperation(async () => {
   if (!confirm(`Delete “${project.name}” from this browser? Export a backup first if you need it.`)) return;
   if (repository) await repository.delete(project.id);

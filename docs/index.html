@@ -17,7 +17,6 @@
     <a class="brand" href="./"><img src="./icons/analytica-fidei.svg" alt=""><span class="brand-name">Analytica <i>Fidei</i><small>Biblical Discourse Analysis</small></span></a>
     <button id="toggle-projects" aria-expanded="true" aria-controls="project-drawer">Projects</button>
     <div class="active-heading"><h1 id="active-project-name">Discourse analysis canvas</h1><span id="source-description"></span></div>
-    <div id="project-actions" class="toolbar" hidden><button id="export-project">Export backup</button><button id="delete-project" class="quiet danger">Delete</button></div>
   </header>
 
   <aside id="project-drawer" class="project-panel" aria-labelledby="projects-title">
@@ -48,6 +47,7 @@
     </div>
     </details>
     <label class="file-button backup-import" for="project-file">Open project backup<input id="project-file" type="file" accept=".json,application/json"></label>
+    <section id="project-actions" class="data-management" hidden aria-labelledby="data-management-title"><h3 id="data-management-title" class="section-label">Current project data</h3><div class="toolbar"><button id="export-project">Export backup</button><button id="preview-mermaid">Preview Mermaid</button><button id="download-mermaid">Download Mermaid</button><button id="delete-project" class="quiet danger">Delete project</button></div><section id="mermaid-preview" class="mermaid-preview" hidden aria-labelledby="mermaid-preview-title"><div class="drawer-heading"><h4 id="mermaid-preview-title">Mermaid source</h4><button id="close-mermaid-preview" class="quiet" aria-label="Close Mermaid preview">&times;</button></div><p class="small subtle">Paste this semantic flowchart into any Mermaid-compatible viewer. Canvas coordinates are not exported.</p><pre id="mermaid-source" tabindex="0"></pre></section></section>
     <h3 class="section-label">Saved on this browser</h3><nav id="project-list" aria-label="Saved projects"></nav>
     <p id="storage-status" class="small subtle" role="status">Opening local storage…</p>
     <a class="small" href="./guide.html">Canvas controls &amp; import format ↗</a>
@@ -63,15 +63,17 @@
     <section id="workbench" hidden aria-label="Analysis workspace">
       <div class="canvas-toolbar">
         <div class="toolbar word-actions"><span id="selection-count" class="small">Select words or propositions on the canvas</span><button id="add-proposition" class="primary" disabled>Create proposition</button><button id="return-source" disabled>Return to source</button><button id="clear-selection" class="quiet">Clear</button></div>
-        <div class="toolbar proposition-actions"><button id="open-group" disabled>Group selected</button><button id="open-relation" disabled>Connect selected</button><button id="open-role" disabled>Assign role</button><button id="open-anchor" disabled>Anchor connective</button><button id="open-note" disabled>Add note</button></div>
-        <div class="toolbar view-actions"><button id="undo" disabled aria-label="Undo last edit">Undo</button><button id="redo" disabled aria-label="Redo last edit">Redo</button><button id="widen-canvas" title="Add horizontal grid space">Widen canvas</button><button id="reset-layout" class="quiet">Reset positions</button><label class="zoom-label">Zoom<select id="canvas-zoom"><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label><button id="toggle-glosses" aria-pressed="false" disabled>Glosses unavailable</button><button id="toggle-vowels" aria-pressed="true" disabled>Vowels unavailable</button><button id="toggle-cantillation" aria-pressed="true" disabled>Cantillation unavailable</button><button id="theme-toggle" aria-pressed="false">Dark theme</button><button id="toggle-inspector" aria-expanded="false" aria-controls="context-drawer">Inspector</button></div>
+        <div class="toolbar proposition-actions"><button id="open-group" disabled>Group selected</button><button id="open-relation" disabled>Connect selected</button></div>
+        <div class="toolbar view-actions"><button id="undo" disabled aria-label="Undo last edit">Undo</button><button id="redo" disabled aria-label="Redo last edit">Redo</button><button id="reset-layout" class="quiet">Reset positions</button><button id="toggle-glosses" aria-pressed="false" disabled>Glosses unavailable</button><button id="toggle-vowels" aria-pressed="true" disabled>Vowels unavailable</button><button id="toggle-cantillation" aria-pressed="true" disabled>Cantillation unavailable</button><button id="toggle-settings" aria-expanded="false" aria-controls="settings-panel" aria-label="Open settings">⚙ Settings</button><button id="toggle-inspector" aria-expanded="false" aria-controls="context-drawer">Inspector</button></div>
       </div>
       <div class="canvas-caption"><span id="passage-reference"></span><span>Drag words to snap · Arrow keys to nudge · Shift-click to select a range</span><details class="source-preview"><summary>Original text</summary><p id="original-text" dir="auto"></p></details></div>
       <div class="canvas-shell">
         <div id="canvas-viewport" tabindex="0" aria-label="Scrollable analysis canvas"><div id="canvas-sizer"><div id="analysis-canvas"></div></div></div>
+        <aside id="settings-panel" class="settings-panel" hidden aria-labelledby="settings-title"><div class="drawer-heading"><h2 id="settings-title">Canvas settings</h2><button id="close-settings" class="quiet" aria-label="Close settings">×</button></div><div class="stack"><label class="zoom-label">Zoom<select id="canvas-zoom"><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label><button id="widen-canvas" title="Add horizontal grid space">Widen canvas</button><button id="theme-toggle" aria-pressed="false">Dark theme</button></div></aside>
         <aside id="context-drawer" class="context-drawer" hidden aria-label="Contextual inspector">
         <div class="drawer-heading"><h2>Inspector</h2><button class="quiet" id="close-inspector" aria-label="Close inspector">✕</button></div>
         <p id="inspector-empty" class="small subtle">Select a word for its details. Select propositions to group them or connect their ideas.</p>
+        <div class="toolbar inspector-actions" aria-label="Contextual analysis actions"><button id="open-role" disabled>Assign role</button><button id="open-anchor" disabled>Anchor connective</button><button id="open-note" disabled>Add note</button></div>
         <form id="group-form" class="canvas-popover" hidden>
           <div class="popover-heading"><strong>Group propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close group editor">✕</button></div>
           <label for="group-label">Group label</label><input id="group-label" maxlength="120" placeholder="e.g. Main assertion"><button class="primary" type="submit">Apply group</button>
