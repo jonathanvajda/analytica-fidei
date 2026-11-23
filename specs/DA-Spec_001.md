@@ -153,12 +153,15 @@ English, Greek, Hebrew, and Aramaic rules are separate capabilities. The applica
 | UR-29 | Undo, redo, and revise decisions | Command history and reversible mutations | P0 |
 | UR-30 | Add grammatical notes | Annotation entities | P1 |
 | UR-53 | Distinguish changing the display language from starting an analysis of another edition’s syntax | An explicit analysis-basis field and a deliberate create/copy-analysis workflow for a new edition or language | TBD |
+| UR-81 | Reuse an understood subject, predicate, object, or other constituent in propositions where it is not repeated in the text | Stable constituent identities plus proposition-role assertions that distinguish explicit realization from implicit reuse | TBD |
 
 **Acceptance criteria**: The user can create a phrase, assign an adjective to modify its head, change the adjective's interpretation, and see the sentence-flow layout update without losing the original source text.
 
 A Greek syntactic analysis displayed alongside aligned English is still a Greek analysis. An analysis made directly on an English translation has its own syntactic assertions and source anchors. Any copied or suggested relationships are reviewable candidates rather than automatically accepted equivalents.
 
 **Additional acceptance criteria**: Switching the visible text from Greek to aligned English does not relabel Greek dependencies as English syntax. Starting an English-based syntactic analysis creates or explicitly selects a separate analysis while retaining the existing Greek analysis.
+
+A reused constituent is one canonical grammatical entity, not a copied source token and not parenthetical text inserted into the edition. Each proposition-role assertion records both the grammatical role and whether the constituent is explicitly realized in that proposition or supplied implicitly by ellipsis. The same mechanism applies to subjects, predicates, objects, determiners, and other supported roles rather than introducing a special-purpose “implied subject” field.
 
 ### 4.5 Proposition and discourse analysis
 
@@ -178,12 +181,15 @@ Proposition and discourse analysis form a distinct capability layer. A syntactic
 | UR-55 | Relate whole discourse segments as well as individual propositions | Stable discourse-segment entities with explicitly ordered proposition/segment membership | TBD |
 | UR-56 | Record additional relationships when a proposition participates in more than one argument | A semantic directed graph supporting multiple incoming/outgoing relations independently of the primary display hierarchy | TBD |
 | UR-57 | Understand the direction and function of each discourse relationship | Defined relation types, source/target endpoints, participant roles, and an accessible label/abbreviation legend | TBD |
+| UR-82 | Use conjunctions, particles, prepositions, and similar expressions as cues that anchor a proposition or discourse relationship | Non-exclusive source-token anchors with a typed cue function, kept distinct from proposition token coverage and relation semantics | TBD |
 
 **Acceptance criteria**: A user can assert that Proposition B gives the reason for Proposition A, change that relation to an explanation or evidence relation, and export the resulting assertion as RDF independently of the diagram coordinates.
 
 A proposition may occupy part of a verse or cross verse boundaries. Display labels such as “3a” or “3b” are references, not canonical proposition IDs. Group membership, semantic edge direction, and a group’s visual indentation are separate properties. Existing UR-37 retains its P1 priority; the milestone for the expanded segment requirements remains TBD.
 
 **Additional acceptance criteria**: A user can connect two propositions, then connect a proposition to a larger segment, with explicit relation direction in RDF. A proposition with a second semantic parent remains one canonical proposition. If another edition expresses the content differently, its textual anchor can remain uncertain without deleting the proposition or fabricating an exact match.
+
+A connective cue may be inside a proposition’s textual span, adjacent to it, or shared by a larger construction. Marking it as an anchor does not assign the token a second time and does not by itself assert a particular discourse relation. For example, Greek `δέ` can anchor a proposition while its contrastive, continuative, or other discourse function remains an explicit, reviewable interpretation.
 
 ### 4.6 Visualization and export
 
@@ -363,6 +369,9 @@ da:hasConstituent
 da:containsToken
 da:hasSyntacticHead
 da:hasGrammaticalFunction
+da:hasRealizationStatus
+da:hasSourceAnchor
+da:hasCueFunction
 da:dependsOn
 da:expressesProposition
 da:hasDiscourseRelation

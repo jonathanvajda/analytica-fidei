@@ -69,12 +69,26 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     const heading = positionElement(el('div', { className: 'block-heading' }), model.gutter, block.headingY - block.top);
     if (block.kind === 'proposition') {
       const number = state.project.propositions.findIndex(item => item.id === block.id) + 1;
+      const proposition = state.project.propositions[number - 1];
       const checkbox = el('input', { type: 'checkbox', 'aria-label': `Select proposition ${number}` });
       checkbox.checked = state.selectedPropositions.has(block.id);
       checkbox.addEventListener('change', () => onToggleProposition(block.id, checkbox.checked));
       const remove = el('button', { text: '×', className: 'quiet', 'aria-label': `Remove proposition ${number}` });
       remove.addEventListener('click', () => onRemoveProposition(block.id));
-      heading.append(el('label', {}, [checkbox, el('span', { text: `P${number}` })]), remove);
+      const tokenText = ids => model.unit.tokens.filter(token => ids.includes(token.id)).map(token => token.text).join(' ');
+      const roles = (proposition.constituentRoles ?? []).map(assertion => {
+        const constituent = (state.project.constituents ?? []).find(item => item.id === assertion.constituentId);
+        const name = constituent?.label || tokenText(constituent?.tokenIds ?? []) || 'constituent';
+        return el('span', { className: `semantic-badge ${assertion.realization}`,
+          text: `${assertion.realization === 'implicit' ? '↶ ' : ''}${assertion.role}: ${name}`,
+          title: `${assertion.realization} ${assertion.role}` });
+      });
+      const anchors = (proposition.anchors ?? []).map(anchor => {
+        const word = model.unit.tokens.find(token => token.id === anchor.tokenId)?.text ?? 'source cue';
+        return el('span', { className: 'semantic-badge connective',
+          text: `◇ ${word}${anchor.function ? ` · ${anchor.function}` : ''}`, title: 'Connective proposition anchor' });
+      });
+      heading.append(el('label', {}, [checkbox, el('span', { text: `P${number}` })]), ...roles, ...anchors, remove);
     } else heading.append(el('span', { className: 'source-heading', text: 'Source' }));
     wrapper.append(heading);
     return [wrapper, ...block.words.flatMap(word => renderWord(word, block))];

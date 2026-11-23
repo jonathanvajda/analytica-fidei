@@ -1,5 +1,6 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup,
-  addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline } from '../docs/js/core/project.js';
+  addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
+  addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
 import { segmentLinguisticWords } from '../docs/js/vendor/linguistic-adapters/index.js';
 
@@ -80,6 +81,50 @@ test('entity IDs cannot collide across node/edge collections', () => {
   const project = withPropositions();
   expect(() => addAnalysisGroup(project, { id: 'p0', propositionIds: ['p0', 'p1'] })).toThrow(/unique/);
   expect(() => addAnalysisRelation(project, { id: 'p0', from: 'p0', to: 'p1', label: 'x' })).toThrow(/unique/);
+});
+
+test('one source constituent can fill explicit and implicit proposition roles without duplicating coverage', () => {
+  let project = withPropositions();
+  const subjectToken = project.propositions[0].tokenIds[0];
+  project = addAnalysisConstituent(project, { id: 'people', tokenIds: [subjectToken], label: 'the people' });
+  project = attachAnalysisConstituent(project,
+    { propositionId: 'p0', constituentId: 'people', role: 'subject', realization: 'explicit' });
+  project = attachAnalysisConstituent(project,
+    { propositionId: 'p1', constituentId: 'people', role: 'subject', realization: 'implicit' });
+  expect(project.constituents).toEqual([{ id: 'people', tokenIds: [subjectToken], label: 'the people' }]);
+  expect(project.propositions[1].constituentRoles).toEqual([
+    { constituentId: 'people', role: 'subject', realization: 'implicit' },
+  ]);
+  expect(project.propositions.flatMap(item => item.tokenIds)).toHaveLength(8);
+  expect(() => attachAnalysisConstituent(project,
+    { propositionId: 'p1', constituentId: 'people', role: 'object', realization: 'explicit' })).toThrow(/inside/);
+});
+
+test('connective anchors overlap source coverage without becoming duplicate proposition tokens', () => {
+  let project = withPropositions();
+  const connective = project.propositions[1].tokenIds[0];
+  project = addAnalysisPropositionAnchor(project,
+    { propositionId: 'p1', tokenId: connective, function: 'purpose' });
+  expect(project.propositions[1].anchors).toEqual([
+    { tokenId: connective, kind: 'connective', function: 'purpose' },
+  ]);
+  expect(project.propositions[1].tokenIds).toHaveLength(2);
+  expect(() => addAnalysisPropositionAnchor(project,
+    { propositionId: 'p1', tokenId: connective })).toThrow(/already anchors/);
+});
+
+test('reusable roles and connective anchors round-trip with older v1 projects remaining valid', () => {
+  let project = withPropositions();
+  const tokenId = project.propositions[0].tokenIds[0];
+  project = addAnalysisConstituent(project, { id: 'shared', tokenIds: [tokenId] });
+  project = attachAnalysisConstituent(project,
+    { propositionId: 'p1', constituentId: 'shared', role: 'predicate', realization: 'implicit' });
+  project = addAnalysisPropositionAnchor(project,
+    { propositionId: 'p1', tokenId: project.propositions[1].tokenIds[0], function: 'result' });
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
+  const legacy = structuredClone(withPropositions());
+  delete legacy.constituents;
+  expect(restoreAnalysisProject(legacy).constituents).toEqual([]);
 });
 
 test('inserting inside a group cannot silently change membership', () => {
