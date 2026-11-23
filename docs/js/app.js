@@ -15,6 +15,8 @@ import { createEditionBrowser } from './ui/edition-browser.js';
 const $ = selector => document.querySelector(selector);
 const THEME_STORAGE_KEY = 'analytica-fidei-theme';
 const GLOSS_STORAGE_KEY = 'analytica-fidei-show-glosses';
+const VOWEL_STORAGE_KEY = 'analytica-fidei-show-hebrew-vowels';
+const CANTILLATION_STORAGE_KEY = 'analytica-fidei-show-hebrew-cantillation';
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
@@ -30,6 +32,12 @@ applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme
 
 let showGlosses = false;
 try { showGlosses = localStorage.getItem(GLOSS_STORAGE_KEY) === 'true'; } catch { /* Optional preference. */ }
+let showHebrewVowels = true;
+let showHebrewCantillation = true;
+try {
+  showHebrewVowels = localStorage.getItem(VOWEL_STORAGE_KEY) !== 'false';
+  showHebrewCantillation = localStorage.getItem(CANTILLATION_STORAGE_KEY) !== 'false';
+} catch { /* Optional preferences. */ }
 
 let repository = null;
 let project = null;
@@ -175,11 +183,20 @@ function renderProject() {
   $('#toggle-glosses').disabled = !hasGlosses;
   $('#toggle-glosses').setAttribute('aria-pressed', String(hasGlosses && showGlosses));
   $('#toggle-glosses').textContent = !hasGlosses ? 'Glosses unavailable' : showGlosses ? 'Hide glosses' : 'Show glosses';
+  const hasVowels = unit.tokens.some(token => /[\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/u.test(token.text));
+  const hasCantillation = unit.tokens.some(token => /[\u0591-\u05AF]/u.test(token.text));
+  $('#toggle-vowels').disabled = !hasVowels;
+  $('#toggle-vowels').setAttribute('aria-pressed', String(hasVowels && showHebrewVowels));
+  $('#toggle-vowels').textContent = !hasVowels ? 'Vowels unavailable' : showHebrewVowels ? 'Hide vowels' : 'Show vowels';
+  $('#toggle-cantillation').disabled = !hasCantillation;
+  $('#toggle-cantillation').setAttribute('aria-pressed', String(hasCantillation && showHebrewCantillation));
+  $('#toggle-cantillation').textContent = !hasCantillation ? 'Cantillation unavailable' : showHebrewCantillation ? 'Hide cantillation' : 'Show cantillation';
   renderCanvas();
 }
 
 function renderCanvas() {
-  canvas.render({ project, selectedTokens, selectedPropositions, focusedRelationId, showGlosses });
+  canvas.render({ project, selectedTokens, selectedPropositions, focusedRelationId, showGlosses,
+    showHebrewVowels, showHebrewCantillation });
   updateCanvasActions();
 }
 
@@ -402,6 +419,18 @@ $('#toggle-glosses').addEventListener('click', () => {
   try { localStorage.setItem(GLOSS_STORAGE_KEY, String(showGlosses)); } catch { /* Keep the in-session layer. */ }
   renderCanvas();
 });
+function toggleHebrewLayer(key) {
+  if (key === 'vowels') showHebrewVowels = !showHebrewVowels;
+  else showHebrewCantillation = !showHebrewCantillation;
+  const visible = key === 'vowels' ? showHebrewVowels : showHebrewCantillation;
+  const button = key === 'vowels' ? $('#toggle-vowels') : $('#toggle-cantillation');
+  button.setAttribute('aria-pressed', String(visible));
+  button.textContent = `${visible ? 'Hide' : 'Show'} ${key}`;
+  try { localStorage.setItem(key === 'vowels' ? VOWEL_STORAGE_KEY : CANTILLATION_STORAGE_KEY, String(visible)); } catch { /* Keep in session. */ }
+  renderCanvas();
+}
+$('#toggle-vowels').addEventListener('click', () => toggleHebrewLayer('vowels'));
+$('#toggle-cantillation').addEventListener('click', () => toggleHebrewLayer('cantillation'));
 $('#reset-layout').addEventListener('click', () => runUiOperation(async () => {
   await persistProject(resetAnalysisCanvas(project)); report('Word positions reset. Propositions, groups, and relationships are preserved.');
 }));

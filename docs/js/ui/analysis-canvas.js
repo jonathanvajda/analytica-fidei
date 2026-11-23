@@ -4,6 +4,8 @@ import { MAX_CANVAS_ROW } from '../core/presentation.js';
 import { createUiElement as el } from './dom.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+const HEBREW_VOWELS = /[\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/gu;
+const HEBREW_CANTILLATION = /[\u0591-\u05AF]/gu;
 
 function svgElement(tag, attributes = {}, children = []) {
   const element = document.createElementNS(SVG_NS, tag);
@@ -37,7 +39,14 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     // Match the rendered font; supply only measurements to the headless layout engine.
     measurer.font = '20px "Palatino Linotype", "Book Antiqua", "Times New Roman", serif';
     const tokens = computeAnalysisCanvas(project).unit.tokens;
-    return Object.fromEntries(tokens.map(token => [token.id, measurer.measureText(token.text).width + 26]));
+    return Object.fromEntries(tokens.map(token => [token.id, measurer.measureText(displayTokenText(token)).width + 26]));
+  }
+
+  function displayTokenText(token) {
+    let value = token.text;
+    if (state.showHebrewVowels === false) value = value.replace(HEBREW_VOWELS, '');
+    if (state.showHebrewCantillation === false) value = value.replace(HEBREW_CANTILLATION, '');
+    return value;
   }
 
   function applyZoom() {
@@ -56,7 +65,7 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
       'aria-pressed': state.selectedTokens.has(word.id),
       'aria-label': `${word.text} · ${block.kind === 'source' ? 'unassigned' : `proposition ${state.project.propositions.findIndex(item => item.id === block.id) + 1}`} · column ${word.column + 1}, row ${word.row + 1}`,
       title: 'Drag to place · Arrow keys to nudge · Double-click for word details' });
-    button.append(el('span', { className: 'word-surface', text: word.text }),
+    button.append(el('span', { className: 'word-surface', text: displayTokenText(word) }),
       ...(gloss ? [el('span', { className: 'word-gloss', text: gloss.value, lang: gloss.language, dir: 'auto' })] : []));
     const x = model.gutter + word.column * CELL;
     const y = block.wordY + word.row * ROW;

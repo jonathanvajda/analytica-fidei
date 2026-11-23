@@ -128,6 +128,9 @@ UR-43 has an initial optional lexical-gloss canvas layer. It renders only suppli
 gloss annotations with their declared language, explicitly disables itself when
 coverage is absent, and remains presentation state rather than analysis data. Other
 annotation layers and export parity remain future work.
+UR-68 has independent, persistent Hebrew vowel-point and cantillation display
+filters. Filtering occurs only at measurement/render time over canonical token text;
+source strings, identities, selections, and analysis assertions are unchanged.
 UR-05's RDF export and other full-spec acceptance gates are not complete.
 
 ## Specification provenance

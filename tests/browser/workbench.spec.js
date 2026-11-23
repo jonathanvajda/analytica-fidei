@@ -301,6 +301,27 @@ test('Hebrew uses RTL word flow on mobile and canvas scrolling stays inside its 
   await page.screenshot({ path: testInfo.outputPath('hebrew-mobile.png'), fullPage: true });
 });
 
+test('Hebrew vowel and cantillation display filters preserve the source token', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);
+  await page.getByText('Practice texts & single-passage import', { exact: true }).click();
+  await page.locator('#project-name').fill('Hebrew marks');
+  const pointed = 'בְּרֵאשִׁ֖ית';
+  const passage = { source: { sourceId: 'hebrew-fixture', version: '1', language: 'hbo' }, unitKey: 'Gen.1.1', records: [{ text: pointed }] };
+  await page.locator('#passage-file').setInputFiles({ name: 'hebrew.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(passage)) });
+  const word = page.locator('.canvas-word').first();
+  await expect(page.getByRole('button', { name: 'Hide vowels', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Hide cantillation', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Hide cantillation', exact: true }).click();
+  await expect(word.locator('.word-surface')).not.toContainText('\u0596');
+  await expect(word).toHaveAttribute('aria-label', new RegExp(pointed));
+  await page.getByRole('button', { name: 'Hide vowels', exact: true }).click();
+  await expect(word.locator('.word-surface')).toHaveText('בראשית');
+  await page.reload();
+  await page.getByRole('button', { name: 'Hebrew marks', exact: true }).click();
+  await expect(word.locator('.word-surface')).toHaveText('בראשית');
+});
+
 test('supplied lexical glosses form a persistent optional canvas layer', async ({ page }) => {
   await page.goto('./');
   await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);
