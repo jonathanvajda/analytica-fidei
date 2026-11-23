@@ -1,6 +1,7 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup,
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
-  addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor,
+  addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
+  attachAnalysisConstituent, addAnalysisPropositionAnchor,
   addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
   updateAnalysisRelation } from '../docs/js/core/project.js';
@@ -158,6 +159,12 @@ test('one source constituent can fill explicit and implicit proposition roles wi
   project = detachAnalysisConstituent(project, { propositionId: 'p1', constituentId: 'people', role: 'subject' });
   expect(project.propositions[1].constituentRoles).toEqual([]);
   expect(project.constituents).toHaveLength(1);
+  project = updateAnalysisConstituent(project, { id: 'people', label: 'the gathered people' });
+  expect(project.constituents[0].label).toBe('the gathered people');
+  expect(() => removeAnalysisConstituent(project, 'people')).toThrow(/every proposition role/);
+  project = detachAnalysisConstituent(project, { propositionId: 'p0', constituentId: 'people', role: 'subject' });
+  project = removeAnalysisConstituent(project, 'people');
+  expect(project.constituents).toEqual([]);
 });
 
 test('connective anchors overlap source coverage without becoming duplicate proposition tokens', () => {

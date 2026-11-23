@@ -199,6 +199,23 @@ export function addAnalysisConstituent(project, { id, tokenIds, label = '' }) {
   return { ...project, constituents: [...(project.constituents ?? []), { id, tokenIds: [...tokenIds], label: label.trim() }] };
 }
 
+/** Rename a reusable constituent without changing its source anchors or role references. */
+export function updateAnalysisConstituent(project, { id, label }) {
+  requireAnalysisCondition(typeof label === 'string' && label.trim(), 'Give the constituent a name.');
+  requireAnalysisCondition((project.constituents ?? []).some(item => item.id === id), 'Choose a known constituent.');
+  return { ...project, constituents: project.constituents.map(item => item.id === id
+    ? { ...item, label: label.trim() } : item) };
+}
+
+/** Remove only an unreferenced constituent so grammatical assertions cannot dangle. */
+export function removeAnalysisConstituent(project, id) {
+  requireAnalysisCondition((project.constituents ?? []).some(item => item.id === id), 'Choose a known constituent.');
+  const used = project.propositions.some(proposition =>
+    (proposition.constituentRoles ?? []).some(role => role.constituentId === id));
+  requireAnalysisCondition(!used, 'Remove this constituent from every proposition role before deleting it.');
+  return { ...project, constituents: project.constituents.filter(item => item.id !== id) };
+}
+
 /** Reference one reusable constituent from a proposition role.
  * @param {AnalysisProject} project Current document.
  * @param {{propositionId:string,constituentId:string,role:string,realization?:'explicit'|'implicit'}} input Role assertion.

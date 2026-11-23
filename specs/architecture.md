@@ -83,9 +83,10 @@ There is no silent storage fallback advertised as a successful persistent save.
 1. **Reusable constituent refinement (UR-23, UR-24, UR-28, UR-81):** basic
    inspector authoring is implemented: selected source words define a canonical
    constituent with an explicit role, and that identity can be reused implicitly in
-   other propositions. Role assertions are independently removable. Next, add a
-   constituent-library editor for renaming/deleting orphaned entities, role-specific
-   validation, multiword phrase structure, and dependency targets.
+   other propositions. Role assertions are independently removable, and the
+   inspector library can rename a canonical constituent or delete it once no roles
+   reference it. Next, add role-specific validation, multiword phrase structure,
+   and dependency targets.
 2. **Connective-anchor refinement (UR-82):** basic inspector authoring and removal
    are implemented. Next, add language-aware cue suggestions, freeform/extended
    functions, and relation-level or segment-level anchors without treating a cue as

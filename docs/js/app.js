@@ -1,7 +1,8 @@
 import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, addAnalysisProposition,
   removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
   DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
-  addAnalysisConstituent, attachAnalysisConstituent, detachAnalysisConstituent,
+  addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
+  attachAnalysisConstituent, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
   updateAnalysisRelation } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
@@ -87,6 +88,7 @@ function closeEditors() {
 
 function showInspector() {
   closeSettings();
+  renderConstituentLibrary();
   $('#context-drawer').hidden = false;
   $('#toggle-inspector').setAttribute('aria-expanded', 'true');
 }
@@ -186,6 +188,7 @@ function renderProject() {
   $('#workbench').hidden = !project;
   $('#project-actions').hidden = !project;
   if (!project) { $('#active-project-name').textContent = 'Discourse analysis canvas'; $('#source-description').textContent = ''; return; }
+  renderConstituentLibrary();
   const unit = activeUnit();
   $('#active-project-name').textContent = project.name;
   $('#source-description').textContent = `${project.passage.editionTitle ?? unit.source.sourceId} · ${unit.source.language}`;
@@ -205,6 +208,38 @@ function renderProject() {
   $('#toggle-cantillation').setAttribute('aria-pressed', String(hasCantillation && showHebrewCantillation));
   $('#toggle-cantillation').textContent = !hasCantillation ? 'Cantillation unavailable' : showHebrewCantillation ? 'Hide cantillation' : 'Show cantillation';
   renderCanvas();
+}
+
+function renderConstituentLibrary() {
+  if (!project) return;
+  const unit = activeUnit();
+  $('#constituent-library').hidden = !project.constituents.length;
+  $('#constituent-list').replaceChildren(...project.constituents.map(constituent => {
+    const sourceText = unit.tokens.filter(token => constituent.tokenIds.includes(token.id)).map(token => token.text).join(' ');
+    const uses = project.propositions.flatMap(proposition => proposition.constituentRoles ?? [])
+      .filter(role => role.constituentId === constituent.id).length;
+    const rename = el('button', { type: 'button', text: 'Rename', 'aria-label': `Rename constituent ${constituent.label || sourceText}` });
+    rename.addEventListener('click', () => {
+      const label = prompt('Reusable constituent name', constituent.label || sourceText);
+      if (label === null) return;
+      runUiOperation(async () => {
+        await persistProject(updateAnalysisConstituent(project, { id: constituent.id, label }));
+        report('Reusable constituent renamed everywhere it is used.');
+      });
+    });
+    const remove = el('button', { type: 'button', text: 'Delete', className: 'quiet danger',
+      'aria-label': `Delete constituent ${constituent.label || sourceText}`, ...(uses ? { disabled: '' } : {}) });
+    if (uses) remove.title = `Used by ${uses} grammatical ${uses === 1 ? 'role' : 'roles'}; detach them first.`;
+    remove.addEventListener('click', () => runUiOperation(async () => {
+      await persistProject(removeAnalysisConstituent(project, constituent.id));
+      report('Unused reusable constituent deleted.');
+    }));
+    return el('div', { className: 'constituent-item' }, [
+      el('p', { text: constituent.label || sourceText }),
+      el('p', { className: 'small subtle', text: `${sourceText} · ${uses} ${uses === 1 ? 'use' : 'uses'}` }),
+      el('div', { className: 'toolbar' }, [rename, remove]),
+    ]);
+  }));
 }
 
 function renderCanvas() {

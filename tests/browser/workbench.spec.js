@@ -231,9 +231,19 @@ test('an explicit verb can be defined once and reused implicitly in another prop
   await page.getByRole('button', { name: 'Save grammatical role', exact: true }).click();
   await expect(page.locator('#feedback')).toContainText('Reusable constituent assigned');
   await expect(page.locator('.semantic-badge.role.implicit')).toContainText('predicate: shared verb');
-  await page.getByRole('button', { name: 'Remove implicit predicate shared verb' }).click();
+  await page.getByRole('button', { name: 'Inspector', exact: true }).click();
+  await expect(page.locator('.constituent-item')).toContainText('2 uses');
+  page.once('dialog', dialog => dialog.accept('renamed verb'));
+  await page.getByRole('button', { name: 'Rename constituent shared verb' }).click();
+  await expect(page.locator('.semantic-badge.role.explicit')).toContainText('predicate: renamed verb');
+  await expect(page.locator('.semantic-badge.role.implicit')).toContainText('predicate: renamed verb');
+  await expect(page.getByRole('button', { name: 'Delete constituent renamed verb' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Remove implicit predicate renamed verb' }).click();
   await expect(page.locator('.semantic-badge.role.implicit')).toHaveCount(0);
   await expect(page.locator('.semantic-badge.role.explicit')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Remove explicit predicate renamed verb' }).click();
+  await page.getByRole('button', { name: 'Delete constituent renamed verb' }).click();
+  await expect(page.locator('#constituent-library')).toBeHidden();
 });
 
 test('role and connective actions remain visible when enabled on a narrow screen', async ({ page }) => {
