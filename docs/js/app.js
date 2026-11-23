@@ -323,9 +323,20 @@ function configureRelationForm(relation = null) {
   $('#relation-type').replaceChildren(el('option', { value: '', text: 'Choose a relationship' }),
     ...DISCOURSE_RELATION_TYPES.map(item => el('option', { value: item.id, text: item.label, title: item.description })));
   $('#relation-type').value = relation?.type ?? '';
+  updateRelationGuidance();
   $('#relation-form-title').textContent = relation ? 'Edit discourse relationship' : 'Connect propositions';
   $('#save-relation').textContent = relation ? 'Save relationship' : 'Add relation';
 }
+function updateRelationGuidance() {
+  const type = DISCOURSE_RELATION_TYPES.find(item => item.id === $('#relation-type').value);
+  $('#relation-description').textContent = type
+    ? `${type.label}: ${type.description} “From” is the ${type.label.toLowerCase()} proposition; “To” is what it relates to.`
+    : 'Choose a relationship to see its definition.';
+}
+$('#relation-legend-list').replaceChildren(...DISCOURSE_RELATION_TYPES.flatMap(item => [
+  el('dt', { text: item.label }), el('dd', { text: item.description }),
+]));
+$('#relation-type').addEventListener('change', updateRelationGuidance);
 $('#open-relation').addEventListener('click', () => {
   editingRelationId = null;
   configureRelationForm();
@@ -469,7 +480,17 @@ $('#toggle-settings').addEventListener('click', () => {
   if (show) $('#canvas-zoom').focus();
 });
 $('#close-settings').addEventListener('click', () => { closeSettings(); $('#toggle-settings').focus(); });
-$('#canvas-zoom').addEventListener('change', event => canvas.setZoom(Number(event.target.value)));
+$('#canvas-zoom').addEventListener('change', event => {
+  $('#canvas-zoom').querySelector('[data-fit-value]')?.remove();
+  canvas.setZoom(Number(event.target.value));
+});
+$('#fit-canvas').addEventListener('click', () => {
+  const zoom = canvas.fitToView();
+  $('#canvas-zoom').querySelector('[data-fit-value]')?.remove();
+  const option = el('option', { value: String(zoom), text: `Fit (${Math.round(zoom * 100)}%)`, 'data-fit-value': '' });
+  $('#canvas-zoom').append(option); $('#canvas-zoom').value = String(zoom);
+  report(`Canvas fit to the viewport at ${Math.round(zoom * 100)}%.`);
+});
 $('#theme-toggle').addEventListener('click', () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   applyTheme(theme);

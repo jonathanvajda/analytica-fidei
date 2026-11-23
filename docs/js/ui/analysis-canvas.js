@@ -22,7 +22,7 @@ function positionElement(element, left, top, width) {
 
 /** Browser-only renderer/controller. Geometry and collision rules live in the pure core.
  * @param {object} options Canvas elements and explicit editing callbacks.
- * @returns {{render:function(object):void,updateSelection:function(Set):void,setZoom:function(number):void,focusWord:function(string):void,getWidths:function():object}}
+ * @returns {{render:function(object):void,updateSelection:function(Set):void,setZoom:function(number):void,fitToView:function():number,focusWord:function(string):void,getWidths:function():object}}
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
   onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onRemovePropositionAnchor,
@@ -56,6 +56,16 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     root.style.transform = `scale(${zoom})`;
     sizer.style.width = `${renderWidth * zoom}px`;
     sizer.style.height = `${model.height * zoom}px`;
+  }
+
+  function fitToView() {
+    if (!model) return zoom;
+    const horizontal = (viewport.clientWidth - 12) / model.width;
+    const vertical = (viewport.clientHeight - 12) / model.height;
+    zoom = Math.max(0.25, Math.min(1, horizontal, vertical));
+    applyZoom();
+    viewport.scrollTo({ left: 0, top: 0 });
+    return zoom;
   }
 
   function renderWord(word, block) {
@@ -280,5 +290,5 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
       state = { ...state, selectedTokens };
       for (const button of root.querySelectorAll('.canvas-word')) button.setAttribute('aria-pressed', String(selectedTokens.has(button.dataset.tokenId)));
     },
-    setZoom(value) { zoom = value; applyZoom(); } };
+    setZoom(value) { zoom = value; applyZoom(); }, fitToView };
 }

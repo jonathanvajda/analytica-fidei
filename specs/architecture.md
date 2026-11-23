@@ -91,9 +91,9 @@ There is no silent storage fallback advertised as a successful persistent save.
    functions, and relation-level or segment-level anchors without treating a cue as
    proof of a discourse relation.
 3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
-   vocabulary with formal definitions, inverse-direction guidance, migration rules,
-   and RDF predicates. The controlled selector, direction explanation, and stable-ID
-   editing of a relationship's type and endpoints are implemented.
+   vocabulary with inverse-direction guidance, migration rules, and RDF predicates.
+   The controlled selector, accessible vocabulary definitions, direction explanation,
+   and stable-ID editing of a relationship's type and endpoints are implemented.
 4. **Grammatical-note refinement (UR-30):** basic word-anchored and
    proposition-anchored notes are implemented through the validated command/history
    path. Stable-ID text editing is implemented for both targets. Next, add

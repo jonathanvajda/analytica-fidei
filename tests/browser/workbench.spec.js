@@ -52,6 +52,9 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await selectPropositions(page, [1, 2]);
   await page.getByRole('button', { name: 'Connect selected', exact: true }).click();
   await page.locator('#relation-type').selectOption('evidence');
+  await expect(page.locator('#relation-description')).toContainText('supplies evidence');
+  await page.getByText('Relationship legend', { exact: true }).click();
+  await expect(page.locator('#relation-legend-list')).toContainText('Purpose');
   await page.getByRole('button', { name: 'Add relation', exact: true }).click();
   await expect(page.locator('.relation-chip')).toHaveText('Evidence → P2');
   await expect(page.locator('.relation-edge')).toHaveCount(1);
@@ -148,6 +151,10 @@ test('canvas fills the viewport and can grow into horizontally scrollable space'
   const after = await viewport.evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
   expect(after.scrollWidth).toBeGreaterThan(before.scrollWidth);
   expect(after.scrollWidth).toBeGreaterThan(after.clientWidth);
+  await page.getByRole('button', { name: 'Fit canvas to view', exact: true }).click();
+  await expect(page.locator('#feedback')).toContainText('Canvas fit');
+  await expect.poll(() => viewport.evaluate(element => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  await expect(page.locator('#canvas-zoom')).toHaveValue(/0\./);
   await page.reload();
   await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
   await expect.poll(() => viewport.evaluate(element => element.scrollWidth)).toBe(after.scrollWidth);
