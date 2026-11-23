@@ -121,6 +121,9 @@ Initial requirement coverage is partial: UR-01/04 (local projects), UR-08/09/10/
 authoring foundation for UR-81, basic connective-anchor authoring for UR-82, and the contiguous/laminar
 constraints of UR-72–76. Model support without an authoring UI is not counted as a
 complete requirement.
+
+UR-48 has a persistent explicit light/dark theme covering the current interactive
+workbench. Publication/export theme consistency remains future work under UR-59.
 UR-05's RDF export and other full-spec acceptance gates are not complete.
 
 ## Specification provenance

@@ -13,6 +13,20 @@ import { normalizeEditionCorpus } from './core/editions.js';
 import { createEditionBrowser } from './ui/edition-browser.js';
 
 const $ = selector => document.querySelector(selector);
+const THEME_STORAGE_KEY = 'analytica-fidei-theme';
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  $('#theme-toggle').setAttribute('aria-pressed', String(theme === 'dark'));
+  $('#theme-toggle').textContent = theme === 'dark' ? 'Light theme' : 'Dark theme';
+  document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#102a25' : '#173f37';
+}
+
+let savedTheme = null;
+try { savedTheme = localStorage.getItem(THEME_STORAGE_KEY); } catch { /* Preference persistence is optional. */ }
+applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme
+  : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
 let repository = null;
 let project = null;
 let selectedTokens = new Set();
@@ -368,6 +382,11 @@ $('#toggle-inspector').addEventListener('click', () => {
   if (id) inspectCanvasWord(id); else showInspector();
 });
 $('#canvas-zoom').addEventListener('change', event => canvas.setZoom(Number(event.target.value)));
+$('#theme-toggle').addEventListener('click', () => {
+  const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  applyTheme(theme);
+  try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Keep the in-session theme. */ }
+});
 $('#reset-layout').addEventListener('click', () => runUiOperation(async () => {
   await persistProject(resetAnalysisCanvas(project)); report('Word positions reset. Propositions, groups, and relationships are preserved.');
 }));

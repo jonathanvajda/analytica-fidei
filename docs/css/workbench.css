@@ -24,4 +24,23 @@ body{background:var(--paper)}
 .semantic-badge.note{display:inline-flex;align-items:center;gap:.2rem;border-color:#d7c9a9;background:#fff9e9;color:#765d2e}.semantic-badge.note .quiet{padding:0 .15rem;opacity:.7;color:inherit}
 .canvas-popover textarea{width:100%;resize:vertical;border:1px solid #becbc2;border-radius:4px;padding:.55rem;background:#fff;color:var(--ink);font:inherit}
 @media(min-width:1001px){.canvas-toolbar{flex-wrap:nowrap;overflow-x:auto}.canvas-toolbar>.toolbar{flex-wrap:nowrap;flex-shrink:0}}
+
+/* UR-48: explicit dark presentation; semantic colors retain their meaning. */
+:root[data-theme=dark]{color-scheme:dark;--ink:#e6eee9;--muted:#a8b8b0;--accent:#b8dacd;--accent-raised:#356f61;--gold:#d0a85f;--cream:#f6efe2;--paper:#0d211d;--line:#354b44;--soft:#1b342d;--error:#ef9a90;background:var(--paper)}
+:root[data-theme=dark] body{background:var(--paper)}
+:root[data-theme=dark] .masthead{background:linear-gradient(90deg,#102a25 0,#102a25 72%,#2a2a20 100%);border-bottom-color:#354b44;box-shadow:0 1px 8px #0008}
+:root[data-theme=dark] button,:root[data-theme=dark] .file-button,:root[data-theme=dark] input,:root[data-theme=dark] select,:root[data-theme=dark] textarea{background:#142e28;color:var(--ink);border-color:#49645b}
+:root[data-theme=dark] button:hover,:root[data-theme=dark] .file-button:hover{background:#24463d}
+:root[data-theme=dark] .primary{background:#2b6658;color:#fff;border-color:#4b8a79}
+:root[data-theme=dark] .project-panel{background:#142a24;border-color:#354b44;box-shadow:8px 0 30px #0006}
+:root[data-theme=dark] .canvas-shell,:root[data-theme=dark] #analysis-canvas{background-color:#10231f;border-color:#354b44}
+:root[data-theme=dark] #analysis-canvas{background-image:radial-gradient(circle,#3f5d52 1px,transparent 1px)}
+:root[data-theme=dark] .canvas-block{border-bottom-color:#294039}:root[data-theme=dark] .canvas-block.is-focused{background:#6d542328}
+:root[data-theme=dark] .canvas-word{background:#18312a;color:#edf4ef;box-shadow:0 1px 2px #0008}
+:root[data-theme=dark] .canvas-word:hover{background:#25483e;border-color:#7da492}:root[data-theme=dark] .canvas-word[aria-pressed=true]{background:#345944;border-color:#9bc39e}
+:root[data-theme=dark] .context-drawer,:root[data-theme=dark] .canvas-popover,:root[data-theme=dark] .source-preview p{background:#132923;border-color:#49645b;box-shadow:-8px 0 24px #0005;color:var(--ink)}
+:root[data-theme=dark] .group-badge,:root[data-theme=dark] .semantic-badge{background:#203b32;border-color:#46675a;color:#c8e3d6}
+:root[data-theme=dark] .relation-chip,:root[data-theme=dark] .semantic-badge.connective{background:#3a3020;border-color:#705d38;color:#efd39b}
+:root[data-theme=dark] .semantic-badge.note{background:#3b321f;border-color:#75613a;color:#efd59e}
+:root[data-theme=dark] #feedback[data-error=true]{background:#421f1c;color:#ffb0a7}
 @media(max-width:680px){.brand img{width:34px;height:34px}.brand-name{font-size:1rem}.brand-name small{display:none}}

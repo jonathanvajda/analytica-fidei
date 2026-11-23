@@ -130,6 +130,22 @@ test('canvas fills the viewport and can grow into horizontally scrollable space'
   await expect.poll(() => viewport.evaluate(element => element.scrollWidth)).toBe(after.scrollWidth);
 });
 
+test('dark theme covers the workbench and persists across reload', async ({ page }) => {
+  await createPracticeProject(page);
+  await page.getByRole('button', { name: 'Dark theme', exact: true }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('button', { name: 'Light theme', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  const colors = await page.evaluate(() => ({ body: getComputedStyle(document.body).backgroundColor,
+    canvas: getComputedStyle(document.querySelector('#analysis-canvas')).backgroundColor,
+    word: getComputedStyle(document.querySelector('.canvas-word')).backgroundColor }));
+  expect(new Set(Object.values(colors)).size).toBeGreaterThan(1);
+  expect(Object.values(colors).every(color => !['rgb(255, 255, 255)', 'rgba(0, 0, 0, 0)'].includes(color))).toBe(true);
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Light theme', exact: true })).toBeVisible();
+});
+
 test('a selected word can be authored and removed as a connective proposition anchor', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 0, 3);
