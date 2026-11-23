@@ -3,6 +3,7 @@ import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, ad
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, addAnalysisPropositionAnchor,
   addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
+  traceAnalysisArgument,
   addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
   updateAnalysisRelation } from '../docs/js/core/project.js';
@@ -111,6 +112,14 @@ test('semantic edges do not alter primary placement; dangling edges/groups are r
   expect(removed.groups).toEqual([]);
   expect(removed.relations).toEqual([]);
   expect(removed.propositions).toHaveLength(3);
+});
+
+test('argument tracing finds the connected semantic component in stable order', () => {
+  let project = withPropositions();
+  project = addAnalysisRelation(project, { id: 'r1', from: 'p0', to: 'p1', type: 'evidence' });
+  project = addAnalysisRelation(project, { id: 'r2', from: 'p2', to: 'p1', type: 'reason' });
+  expect(traceAnalysisArgument(project, 'r2')).toEqual({ propositionIds: ['p0', 'p1', 'p2'], relationIds: ['r1', 'r2'] });
+  expect(() => traceAnalysisArgument(project, 'missing')).toThrow(/known/);
 });
 
 test('controlled discourse relationships retain a stable type and canonical label', () => {

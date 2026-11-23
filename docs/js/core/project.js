@@ -388,3 +388,25 @@ export function buildAnalysisOutline(project) {
   const sortChildren = nodes => nodes.sort((a, b) => a.start - b.start).map(node => node.children ? { ...node, children: sortChildren(node.children) } : node);
   return sortChildren(roots);
 }
+
+/** Find the undirected connected argument containing one semantic edge. */
+export function traceAnalysisArgument(project, relationId) {
+  const seed = project.relations.find(item => item.id === relationId);
+  requireAnalysisCondition(seed, 'Choose a known discourse relationship.');
+  const propositionIds = new Set([seed.from, seed.to]);
+  const relationIds = new Set();
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const relation of project.relations) {
+      if (!propositionIds.has(relation.from) && !propositionIds.has(relation.to)) continue;
+      if (!relationIds.has(relation.id)) { relationIds.add(relation.id); changed = true; }
+      if (!propositionIds.has(relation.from)) { propositionIds.add(relation.from); changed = true; }
+      if (!propositionIds.has(relation.to)) { propositionIds.add(relation.to); changed = true; }
+    }
+  }
+  return {
+    propositionIds: project.propositions.filter(item => propositionIds.has(item.id)).map(item => item.id),
+    relationIds: project.relations.filter(item => relationIds.has(item.id)).map(item => item.id),
+  };
+}

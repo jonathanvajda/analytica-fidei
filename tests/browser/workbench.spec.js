@@ -109,6 +109,30 @@ test('project data tools preview and download a Mermaid semantic flowchart', asy
   expect((await downloadPromise).suggestedFilename()).toBe('Test_analysis_analysis.mmd');
 });
 
+test('a focused relationship can expand to trace its connected argument', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 2);
+  await createProposition(page, 2, 4);
+  await createProposition(page, 4, 6);
+  await selectPropositions(page, [1, 2]);
+  await page.getByRole('button', { name: 'Connect selected', exact: true }).click();
+  await page.locator('#relation-type').selectOption('evidence');
+  await page.getByRole('button', { name: 'Add relation', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
+  await selectPropositions(page, [2, 3]);
+  await page.getByRole('button', { name: 'Connect selected', exact: true }).click();
+  await page.locator('#relation-type').selectOption('reason');
+  await page.getByRole('button', { name: 'Add relation', exact: true }).click();
+  await expect(page.locator('.relation-edge')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Trace connected argument' }).click();
+  await expect(page.locator('.relation-edge')).toHaveCount(2);
+  await expect(page.locator('.canvas-block.is-focused')).toHaveCount(3);
+  await expect(page.locator('.relation-chip.is-traced')).toHaveCount(2);
+  await expect(page.locator('#feedback')).toContainText('3 propositions across 2 relationships');
+  await page.getByRole('button', { name: 'Show focused relationship only' }).click();
+  await expect(page.locator('.relation-edge')).toHaveCount(1);
+});
+
 test('crossing groups are rejected while nested groups stay in the same canvas', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 0, 3);

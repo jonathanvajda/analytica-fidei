@@ -88,7 +88,9 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function renderBlock(block) {
     const focused = state.project.relations.find(item => item.id === state.focusedRelationId);
-    const wrapper = positionElement(el('div', { className: `canvas-block ${block.kind === 'proposition' ? 'proposition' : 'source-block'}${focused && [focused.from, focused.to].includes(block.id) ? ' is-focused' : ''}`,
+    const highlighted = state.argumentTrace?.propositionIds.includes(block.id)
+      || (focused && [focused.from, focused.to].includes(block.id));
+    const wrapper = positionElement(el('div', { className: `canvas-block ${block.kind === 'proposition' ? 'proposition' : 'source-block'}${highlighted ? ' is-focused' : ''}`,
       'data-block-id': block.id }), 0, block.top);
     wrapper.style.height = `${block.bottom - block.top}px`;
     const heading = positionElement(el('div', { className: 'block-heading' }), model.gutter, block.headingY - block.top);
@@ -154,7 +156,8 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     const number = id => `P${state.project.propositions.findIndex(item => item.id === id) + 1}`;
     const chips = model.blocks.filter(block => block.relations.length).map(block => positionElement(el('div', { className: 'relation-chips' },
       block.relations.map(relation => {
-        const button = el('button', { className: 'relation-chip', text: `${relation.label} → ${number(relation.to)}`,
+        const traced = state.argumentTrace?.relationIds.includes(relation.id);
+        const button = el('button', { className: `relation-chip${traced ? ' is-traced' : ''}`, text: `${relation.label} → ${number(relation.to)}`,
           'aria-label': `${number(relation.from)} → ${number(relation.to)} · ${relation.label}`, 'aria-pressed': state.focusedRelationId === relation.id });
         button.addEventListener('click', () => onFocusRelation(relation.id));
         const anchors = (relation.anchors ?? []).map(anchor => {
@@ -170,15 +173,19 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
       })), model.gutter, block.headingY + 24));
     const relation = state.project.relations.find(item => item.id === state.focusedRelationId);
     if (!relation) return chips;
-    const from = model.blocks.find(block => block.id === relation.from);
-    const to = model.blocks.find(block => block.id === relation.to);
+    const visibleRelations = state.argumentTrace
+      ? state.project.relations.filter(item => state.argumentTrace.relationIds.includes(item.id)) : [relation];
     const x = model.gutter - 16;
-    const lane = model.gutter - 42;
     const svg = svgElement('svg', { class: 'canvas-connectors', width: model.width, height: model.height, 'aria-hidden': true }, [
       svgElement('defs', {}, [svgElement('marker', { id: 'relation-arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' },
         [svgElement('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#b37b2b' })])]),
-      svgElement('path', { class: 'relation-edge', 'marker-end': 'url(#relation-arrow)',
-        d: `M ${x} ${from.wordY + 18} H ${lane} V ${to.wordY + 18} H ${x}` }),
+      ...visibleRelations.map((item, index) => {
+        const from = model.blocks.find(block => block.id === item.from);
+        const to = model.blocks.find(block => block.id === item.to);
+        const lane = Math.max(8, model.gutter - 42 - index * 10);
+        return svgElement('path', { class: 'relation-edge', 'data-relation-id': item.id, 'marker-end': 'url(#relation-arrow)',
+          d: `M ${x} ${from.wordY + 18} H ${lane} V ${to.wordY + 18} H ${x}` });
+      }),
     ]);
     return [svg, ...chips];
   }

@@ -5,7 +5,7 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
-  updateAnalysisRelation } from './core/project.js';
+  updateAnalysisRelation, traceAnalysisArgument } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -49,6 +49,7 @@ let selectedTokens = new Set();
 let selectedPropositions = new Set();
 let selectionAnchor = null;
 let focusedRelationId = null;
+let traceArgument = false;
 let editingRelationId = null;
 let editingNoteId = null;
 let operationQueue = Promise.resolve();
@@ -112,7 +113,7 @@ async function persistProject(next, { history = true } = {}) {
 }
 
 async function activateProject(next) {
-  selectedTokens.clear(); selectedPropositions.clear(); selectionAnchor = null; focusedRelationId = null;
+  selectedTokens.clear(); selectedPropositions.clear(); selectionAnchor = null; focusedRelationId = null; traceArgument = false;
   undoStack = []; redoStack = []; closeEditors(); closeSettings();
   if (!next.layout) {
     const available = $('#main-content').getBoundingClientRect().width - 32;
@@ -183,7 +184,7 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
     await persistProject(removeAnalysisRelationAnchor(project, { relationId, tokenId }));
     report('Relationship connective anchor removed. The source word and relationship were retained.');
   }),
-  onFocusRelation: id => { focusedRelationId = focusedRelationId === id ? null : id; renderCanvas(); },
+  onFocusRelation: id => { focusedRelationId = focusedRelationId === id ? null : id; traceArgument = false; renderCanvas(); },
 });
 
 function activeUnit() { return adaptAnalysisPassage(project.passage); }
@@ -248,7 +249,8 @@ function renderConstituentLibrary() {
 }
 
 function renderCanvas() {
-  canvas.render({ project, selectedTokens, selectedPropositions, focusedRelationId, showGlosses,
+  const argumentTrace = traceArgument && focusedRelationId ? traceAnalysisArgument(project, focusedRelationId) : null;
+  canvas.render({ project, selectedTokens, selectedPropositions, focusedRelationId, argumentTrace, showGlosses,
     showHebrewVowels, showHebrewCantillation });
   updateCanvasActions();
 }
@@ -274,6 +276,9 @@ function updateCanvasActions() {
   $('#relation-summary').textContent = relation ? `Focused: ${relation.label} · click its label to hide the connector` : 'Select a relationship label to trace its connection.';
   $('#remove-relation').hidden = !relation;
   $('#edit-relation').hidden = !relation;
+  $('#trace-argument').hidden = !relation;
+  $('#trace-argument').setAttribute('aria-pressed', String(Boolean(relation && traceArgument)));
+  $('#trace-argument').textContent = traceArgument ? 'Show focused relationship only' : 'Trace connected argument';
 }
 
 function selectCanvasWord(id, extend) {
@@ -509,9 +514,16 @@ $('#edit-relation').addEventListener('click', () => {
   configureRelationForm(relation);
   openCanvasEditor('#relation-form');
 });
+$('#trace-argument').addEventListener('click', () => {
+  traceArgument = !traceArgument;
+  renderCanvas();
+  const trace = traceArgument ? traceAnalysisArgument(project, focusedRelationId) : null;
+  report(trace ? `Tracing ${trace.propositionIds.length} propositions across ${trace.relationIds.length} relationships.`
+    : 'Showing the focused relationship only.');
+});
 $('#remove-relation').addEventListener('click', () => runUiOperation(async () => {
   const next = { ...project, relations: project.relations.filter(item => item.id !== focusedRelationId) };
-  focusedRelationId = null; await persistProject(next); report('Relationship removed.');
+  focusedRelationId = null; traceArgument = false; await persistProject(next); report('Relationship removed.');
 }));
 
 for (const button of document.querySelectorAll('[data-close-popover]')) button.addEventListener('click', closeEditors);
