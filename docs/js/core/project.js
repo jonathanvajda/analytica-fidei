@@ -6,7 +6,7 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{id:string, tokenIds:string[], label:string}} AnalysisConstituent */
 /** @typedef {{constituentId:string, role:string, realization:'explicit'|'implicit'}} AnalysisConstituentRole */
 /** @typedef {{tokenId:string, kind:'connective', function:string}} AnalysisAnchor */
-/** @typedef {{id:string,targetType:'token'|'proposition',targetId:string,text:string}} AnalysisNote */
+/** @typedef {{id:string,targetType:'token'|'proposition'|'relation',targetId:string,text:string}} AnalysisNote */
 /** @typedef {{id:string, propositionIds:string[], label:string}} AnalysisGroup */
 /** @typedef {{id:string, from:string, to:string, label:string, type?:string, anchors?:AnalysisAnchor[]}} AnalysisRelation */
 /** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
@@ -161,13 +161,14 @@ function analysisEntityIds(project) {
     ...(project.notes ?? [])].map(item => item.id);
 }
 
-/** Add a user-authored note to one canonical token or proposition. */
+/** Add a user-authored note to one canonical analysis entity. */
 export function addAnalysisNote(project, { id, targetType, targetId, text }) {
   requireAnalysisCondition(typeof id === 'string' && id.trim() && !analysisEntityIds(project).includes(id), 'Note ID must be unique.');
-  requireAnalysisCondition(['token', 'proposition'].includes(targetType), 'Choose a word or proposition note target.');
+  requireAnalysisCondition(['token', 'proposition', 'relation'].includes(targetType), 'Choose a word, proposition, or relationship note target.');
   const known = targetType === 'token'
     ? adaptAnalysisPassage(project.passage).tokens.some(item => item.id === targetId)
-    : project.propositions.some(item => item.id === targetId);
+    : targetType === 'proposition' ? project.propositions.some(item => item.id === targetId)
+      : project.relations.some(item => item.id === targetId);
   requireAnalysisCondition(known, 'Choose a known note target.');
   requireAnalysisCondition(typeof text === 'string' && text.trim(), 'Write a note before saving.');
   return { ...project, notes: [...(project.notes ?? []), { id, targetType, targetId, text: text.trim() }] };
@@ -374,10 +375,19 @@ export function removeAnalysisRelationAnchor(project, { relationId, tokenId, kin
  * @returns {AnalysisProject}
  */
 export function removeAnalysisProposition(project, id) {
+  const removedRelationIds = new Set(project.relations.filter(item => item.from === id || item.to === id).map(item => item.id));
   return { ...project, propositions: project.propositions.filter(item => item.id !== id),
     groups: project.groups.filter(group => !group.propositionIds.includes(id)),
     relations: project.relations.filter(item => item.from !== id && item.to !== id),
-    notes: (project.notes ?? []).filter(item => item.targetType !== 'proposition' || item.targetId !== id) };
+    notes: (project.notes ?? []).filter(item => !(item.targetType === 'proposition' && item.targetId === id)
+      && !(item.targetType === 'relation' && removedRelationIds.has(item.targetId))) };
+}
+
+/** Remove one relationship and annotations that cannot exist without it. */
+export function removeAnalysisRelation(project, id) {
+  requireAnalysisCondition(project.relations.some(item => item.id === id), 'Choose a known discourse relationship.');
+  return { ...project, relations: project.relations.filter(item => item.id !== id),
+    notes: (project.notes ?? []).filter(item => item.targetType !== 'relation' || item.targetId !== id) };
 }
 
 /** Derive an ordered bracket tree; semantic edges remain a separate graph.

@@ -6,7 +6,7 @@ import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, ad
   traceAnalysisArgument,
   addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
-  updateAnalysisRelation } from '../docs/js/core/project.js';
+  updateAnalysisRelation, removeAnalysisRelation } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
 import { segmentLinguisticWords } from '../docs/js/vendor/linguistic-adapters/index.js';
 
@@ -145,6 +145,14 @@ test('word and proposition notes validate, round-trip, and clean up with their p
   const removedNote = removeAnalysisNote(project, 'word-note');
   expect(removedNote.notes.map(item => item.id)).toEqual(['prop-note']);
   expect(removeAnalysisProposition(project, 'p0').notes.map(item => item.id)).toEqual(['word-note']);
+});
+
+test('relationship notes round-trip and are removed atomically with their edge', () => {
+  let project = addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'reason' });
+  project = addAnalysisNote(project, { id: 'relation-note', targetType: 'relation', targetId: 'r', text: 'Key inferential step' });
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
+  expect(removeAnalysisRelation(project, 'r').notes).toEqual([]);
+  expect(removeAnalysisProposition(project, 'p1').notes).toEqual([]);
 });
 
 test('entity IDs cannot collide across node/edge collections', () => {

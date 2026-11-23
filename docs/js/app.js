@@ -5,7 +5,7 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
-  updateAnalysisRelation, traceAnalysisArgument } from './core/project.js';
+  updateAnalysisRelation, removeAnalysisRelation, traceAnalysisArgument } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -52,6 +52,7 @@ let focusedRelationId = null;
 let traceArgument = false;
 let editingRelationId = null;
 let editingNoteId = null;
+let noteDraftTarget = null;
 let editingGroupId = null;
 let operationQueue = Promise.resolve();
 let undoStack = [];
@@ -285,6 +286,7 @@ function updateCanvasActions() {
   $('#relation-summary').textContent = relation ? `Focused: ${relation.label} · click its label to hide the connector` : 'Select a relationship label to trace its connection.';
   $('#remove-relation').hidden = !relation;
   $('#edit-relation').hidden = !relation;
+  $('#note-relation').hidden = !relation;
   $('#trace-argument').hidden = !relation;
   $('#trace-argument').setAttribute('aria-pressed', String(Boolean(relation && traceArgument)));
   $('#trace-argument').textContent = traceArgument ? 'Show focused relationship only' : 'Trace connected argument';
@@ -484,28 +486,34 @@ $('#role-form').addEventListener('submit', event => {
   });
 });
 
-function openNoteEditor(id = null) {
+function openNoteEditor(id = null, target = null) {
   editingNoteId = id;
   const note = id ? project.notes.find(item => item.id === id) : null;
+  noteDraftTarget = note ? { targetType: note.targetType, targetId: note.targetId } : target;
   $('#note-form-title').textContent = note ? 'Edit analysis note' : 'Add an analysis note';
   $('#note-text').value = note?.text ?? '';
   if (note) {
     if (note.targetType === 'token') {
       const token = activeUnit().tokens.find(item => item.id === note.targetId);
       $('#note-target').textContent = `Word: ${token.text}`;
-    } else {
+    } else if (note.targetType === 'proposition') {
       const number = project.propositions.findIndex(item => item.id === note.targetId) + 1;
       $('#note-target').textContent = `Proposition P${number}`;
-    }
+    } else $('#note-target').textContent = `Relationship: ${project.relations.find(item => item.id === note.targetId)?.label}`;
     openCanvasEditor('#note-form');
     return;
   }
-  if (selectedTokens.size === 1) {
+  if (target?.targetType === 'relation') {
+    $('#note-target').textContent = `Relationship: ${project.relations.find(item => item.id === target.targetId)?.label}`;
+  } else if (selectedTokens.size === 1) {
     const token = activeUnit().tokens.find(item => item.id === [...selectedTokens][0]);
     $('#note-target').textContent = `Word: ${token.text}`;
+    noteDraftTarget = { targetType: 'token', targetId: token.id };
   } else {
-    const number = project.propositions.findIndex(item => item.id === [...selectedPropositions][0]) + 1;
+    const propositionId = [...selectedPropositions][0];
+    const number = project.propositions.findIndex(item => item.id === propositionId) + 1;
     $('#note-target').textContent = `Proposition P${number}`;
+    noteDraftTarget = { targetType: 'proposition', targetId: propositionId };
   }
   openCanvasEditor('#note-form');
 }
@@ -517,11 +525,9 @@ $('#note-form').addEventListener('submit', event => {
     let next;
     if (editingNoteId) next = updateAnalysisNote(project, { id: editingNoteId, text: $('#note-text').value });
     else {
-      const targetType = selectedTokens.size === 1 ? 'token' : 'proposition';
-      const targetId = targetType === 'token' ? [...selectedTokens][0] : [...selectedPropositions][0];
-      next = addAnalysisNote(project, { id: crypto.randomUUID(), targetType, targetId, text: $('#note-text').value });
+      next = addAnalysisNote(project, { id: crypto.randomUUID(), ...noteDraftTarget, text: $('#note-text').value });
     }
-    editingNoteId = null;
+    editingNoteId = null; noteDraftTarget = null;
     selectedTokens.clear(); selectedPropositions.clear(); $('#note-text').value = ''; closeEditors();
     await persistProject(next); report(revised ? 'Analysis note updated.' : 'Analysis note saved.');
   });
@@ -540,8 +546,10 @@ $('#trace-argument').addEventListener('click', () => {
   report(trace ? `Tracing ${trace.propositionIds.length} propositions across ${trace.relationIds.length} relationships.`
     : 'Showing the focused relationship only.');
 });
+$('#note-relation').addEventListener('click', () => openNoteEditor(null,
+  { targetType: 'relation', targetId: focusedRelationId }));
 $('#remove-relation').addEventListener('click', () => runUiOperation(async () => {
-  const next = { ...project, relations: project.relations.filter(item => item.id !== focusedRelationId) };
+  const next = removeAnalysisRelation(project, focusedRelationId);
   focusedRelationId = null; traceArgument = false; await persistProject(next); report('Relationship removed.');
 }));
 

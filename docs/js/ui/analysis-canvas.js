@@ -171,7 +171,17 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
             el('span', { text: `◇ ${word}${anchor.function ? ` · ${anchor.function}` : ''}` }), remove,
           ]);
         });
-        return el('span', { className: 'relation-item' }, [button, ...anchors]);
+        const notes = (state.project.notes ?? []).filter(note => note.targetType === 'relation' && note.targetId === relation.id)
+          .map(note => {
+            const edit = el('button', { type: 'button', className: 'quiet', text: 'Edit', 'aria-label': 'Edit relationship note' });
+            edit.addEventListener('click', () => onEditNote(note.id));
+            const remove = el('button', { type: 'button', className: 'quiet', text: '×', 'aria-label': 'Remove relationship note' });
+            remove.addEventListener('click', () => onRemoveNote(note.id));
+            return el('span', { className: 'semantic-badge note relation-note', title: note.text }, [
+              el('span', { text: `Note: ${note.text}` }), edit, remove,
+            ]);
+          });
+        return el('span', { className: 'relation-item' }, [button, ...anchors, ...notes]);
       })), model.gutter, block.headingY + 24));
     const relation = state.project.relations.find(item => item.id === state.focusedRelationId);
     if (!relation) return chips;
