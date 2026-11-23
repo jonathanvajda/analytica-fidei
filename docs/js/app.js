@@ -2,7 +2,7 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
   DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
   addAnalysisConstituent, attachAnalysisConstituent, detachAnalysisConstituent,
-  removeAnalysisTokensFromProposition } from './core/project.js';
+  removeAnalysisTokensFromProposition, addAnalysisNote, removeAnalysisNote } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -44,7 +44,7 @@ function showProjectDrawer(show) {
 }
 
 function closeEditors() {
-  for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#role-form', '#word-inspector']) $(selector).hidden = true;
+  for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#role-form', '#note-form', '#word-inspector']) $(selector).hidden = true;
   $('#context-drawer').hidden = true;
   $('#toggle-inspector').setAttribute('aria-expanded', 'false');
   $('#inspector-empty').hidden = false;
@@ -134,6 +134,9 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
     await persistProject(detachAnalysisConstituent(project, { propositionId, constituentId, role }));
     report('Grammatical role removed. The reusable constituent and source words were retained.');
   }),
+  onRemoveNote: id => runUiOperation(async () => {
+    await persistProject(removeAnalysisNote(project, id)); report('Analysis note removed.');
+  }),
   onFocusRelation: id => { focusedRelationId = focusedRelationId === id ? null : id; renderCanvas(); },
 });
 
@@ -170,6 +173,8 @@ function updateCanvasActions() {
   $('#open-relation').disabled = selectedPropositions.size !== 2;
   $('#open-anchor').disabled = selectedPropositions.size !== 1 || selectedTokens.size !== 1;
   $('#open-role').disabled = selectedPropositions.size !== 1 || (!selectedTokens.size && !project.constituents.length);
+  $('#open-note').disabled = !((selectedTokens.size === 1 && selectedPropositions.size === 0) ||
+    (selectedTokens.size === 0 && selectedPropositions.size === 1));
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
   const unit = activeUnit();
   $('#assignment-summary').textContent = `${project.propositions.flatMap(item => item.tokenIds).length}/${unit.tokens.length} words assigned · ${project.propositions.length} propositions · ${project.relations.length} relationships`;
@@ -189,18 +194,26 @@ function selectCanvasWord(id, extend) {
   }
   // Keep the word DOM stable so double-clicks, focus and touch targets remain intact.
   canvas.updateSelection(selectedTokens); updateCanvasActions(); canvas.focusWord(id);
-  if (!$('#context-drawer').hidden && $('#group-form').hidden && $('#relation-form').hidden && $('#anchor-form').hidden && $('#role-form').hidden) inspectCanvasWord(id);
+  if (!$('#context-drawer').hidden && $('#group-form').hidden && $('#relation-form').hidden && $('#anchor-form').hidden && $('#role-form').hidden && $('#note-form').hidden) inspectCanvasWord(id);
 }
 
 function inspectCanvasWord(id) {
   const unit = activeUnit();
   const token = unit.tokens.find(item => item.id === id);
   const annotations = unit.annotations.filter(item => item.targetTokenId === id);
+  const notes = (project.notes ?? []).filter(item => item.targetType === 'token' && item.targetId === id);
   closeEditors(); showInspector(); $('#inspector-empty').hidden = true; $('#word-inspector').hidden = false;
   $('#word-details').replaceChildren(el('p', { text: `${token.text} · ${token.language}`, lang: token.language, dir: 'auto' }),
     ...(token.reference ? [el('p', { text: token.reference.display })] : []),
     ...annotations.map(item => el('p', { text: `${item.kind}: ${typeof item.value === 'string' ? item.value : JSON.stringify(item.value)} · ${item.scheme ?? 'unspecified scheme'} · ${item.status} · ${item.provenance.providerId}` })),
     ...(annotations.length ? [] : [el('p', { text: 'No lexical annotations supplied for this word.' })]),
+    ...notes.map(note => {
+      const remove = el('button', { type: 'button', className: 'quiet danger', text: 'Remove', 'aria-label': 'Remove word note' });
+      remove.addEventListener('click', () => runUiOperation(async () => {
+        await persistProject(removeAnalysisNote(project, note.id)); report('Analysis note removed.');
+      }));
+      return el('div', { className: 'inspector-note' }, [el('p', { text: note.text }), remove]);
+    }),
     el('p', { className: 'subtle', text: `Source: ${unit.source.sourceId} · ${unit.source.version}` }),
     ...(project.passage.resources ?? []).map(resource => el('p', { className: 'small subtle', text: `${resource.kind}: ${resource.license} · ${resource.attribution}` })));
 }
@@ -319,6 +332,27 @@ $('#role-form').addEventListener('submit', event => {
     selectedTokens.clear(); selectedPropositions.clear(); $('#role-label').value = ''; $('#role-type').value = ''; closeEditors();
     await persistProject(next);
     report(selected === '__selected' ? 'Explicit grammatical constituent created and assigned.' : 'Reusable constituent assigned to the proposition.');
+  });
+});
+
+$('#open-note').addEventListener('click', () => {
+  if (selectedTokens.size === 1) {
+    const token = activeUnit().tokens.find(item => item.id === [...selectedTokens][0]);
+    $('#note-target').textContent = `Word: ${token.text}`;
+  } else {
+    const number = project.propositions.findIndex(item => item.id === [...selectedPropositions][0]) + 1;
+    $('#note-target').textContent = `Proposition P${number}`;
+  }
+  openCanvasEditor('#note-form');
+});
+$('#note-form').addEventListener('submit', event => {
+  event.preventDefault();
+  runUiOperation(async () => {
+    const targetType = selectedTokens.size === 1 ? 'token' : 'proposition';
+    const targetId = targetType === 'token' ? [...selectedTokens][0] : [...selectedPropositions][0];
+    const next = addAnalysisNote(project, { id: crypto.randomUUID(), targetType, targetId, text: $('#note-text').value });
+    selectedTokens.clear(); selectedPropositions.clear(); $('#note-text').value = ''; closeEditors();
+    await persistProject(next); report('Analysis note saved.');
   });
 });
 $('#remove-relation').addEventListener('click', () => runUiOperation(async () => {

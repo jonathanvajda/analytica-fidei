@@ -184,6 +184,21 @@ test('role and connective actions remain visible when enabled on a narrow screen
   await expect(page.getByRole('button', { name: 'Anchor connective', exact: true })).toBeEnabled();
 });
 
+test('a proposition note can be authored, persisted, displayed, and removed', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 3);
+  await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
+  await page.getByRole('button', { name: 'Add note', exact: true }).click();
+  await page.locator('#note-text').fill('The main assertion');
+  await page.getByRole('button', { name: 'Save note', exact: true }).click();
+  await expect(page.locator('.semantic-badge.note')).toContainText('The main assertion');
+  await page.reload();
+  await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
+  await expect(page.locator('.semantic-badge.note')).toContainText('The main assertion');
+  await page.getByRole('button', { name: 'Remove proposition note' }).click();
+  await expect(page.locator('.semantic-badge.note')).toHaveCount(0);
+});
+
 test('dragging an adjacent missed source word into a proposition assigns it', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 1, 4);

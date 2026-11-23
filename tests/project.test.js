@@ -2,7 +2,7 @@ import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, ad
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
   addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor,
   addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
-  removeAnalysisTokensFromProposition } from '../docs/js/core/project.js';
+  removeAnalysisTokensFromProposition, addAnalysisNote, removeAnalysisNote } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
 import { segmentLinguisticWords } from '../docs/js/vendor/linguistic-adapters/index.js';
 
@@ -114,6 +114,18 @@ test('controlled discourse relationships retain a stable type and canonical labe
   const project = addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'purpose' });
   expect(project.relations[0]).toEqual({ id: 'r', from: 'p1', to: 'p0', type: 'purpose', label: 'Purpose' });
   expect(() => addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'unknown' })).toThrow(/supported/);
+});
+
+test('word and proposition notes validate, round-trip, and clean up with their proposition', () => {
+  let project = withPropositions();
+  const tokenId = adaptAnalysisPassage(project.passage).tokens[0].id;
+  project = addAnalysisNote(project, { id: 'word-note', targetType: 'token', targetId: tokenId, text: '  lexical observation  ' });
+  project = addAnalysisNote(project, { id: 'prop-note', targetType: 'proposition', targetId: 'p0', text: 'Main assertion' });
+  expect(project.notes.map(item => item.text)).toEqual(['lexical observation', 'Main assertion']);
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
+  const removedNote = removeAnalysisNote(project, 'word-note');
+  expect(removedNote.notes.map(item => item.id)).toEqual(['prop-note']);
+  expect(removeAnalysisProposition(project, 'p0').notes.map(item => item.id)).toEqual(['word-note']);
 });
 
 test('entity IDs cannot collide across node/edge collections', () => {

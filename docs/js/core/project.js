@@ -6,9 +6,10 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{id:string, tokenIds:string[], label:string}} AnalysisConstituent */
 /** @typedef {{constituentId:string, role:string, realization:'explicit'|'implicit'}} AnalysisConstituentRole */
 /** @typedef {{tokenId:string, kind:'connective', function:string}} AnalysisAnchor */
+/** @typedef {{id:string,targetType:'token'|'proposition',targetId:string,text:string}} AnalysisNote */
 /** @typedef {{id:string, propositionIds:string[], label:string}} AnalysisGroup */
 /** @typedef {{id:string, from:string, to:string, label:string, type?:string}} AnalysisRelation */
-/** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], layout?:{columns:number,words:object}}} AnalysisProject */
+/** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
 export function requireAnalysisCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -46,7 +47,7 @@ export function createAnalysisProject({ id, name, passage }) {
   requireAnalysisCondition(typeof name === 'string' && name.trim(), 'Give the project a name.');
   adaptAnalysisPassage(passage);
   return { schemaVersion: 1, id, name: name.trim(), passage: structuredClone(passage),
-    propositions: [], constituents: [], groups: [], relations: [] };
+    propositions: [], constituents: [], groups: [], relations: [], notes: [] };
 }
 
 /** Restore through the same commands used for editing; reject invalid imports atomically.
@@ -70,6 +71,7 @@ export function restoreAnalysisProject(value) {
   }
   for (const group of value.groups) project = addAnalysisGroup(project, group);
   for (const relation of value.relations) project = addAnalysisRelation(project, relation);
+  for (const note of value.notes ?? []) project = addAnalysisNote(project, note);
   // Old v1 backups have no layout. Keep their semantic content and derive initial placement.
   if (value.layout === undefined) return project;
   const tokenIds = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
@@ -151,7 +153,25 @@ export function removeAnalysisTokensFromProposition(project, { propositionId, to
 }
 
 function analysisEntityIds(project) {
-  return [...project.propositions, ...(project.constituents ?? []), ...project.groups, ...project.relations].map(item => item.id);
+  return [...project.propositions, ...(project.constituents ?? []), ...project.groups, ...project.relations,
+    ...(project.notes ?? [])].map(item => item.id);
+}
+
+/** Add a user-authored note to one canonical token or proposition. */
+export function addAnalysisNote(project, { id, targetType, targetId, text }) {
+  requireAnalysisCondition(typeof id === 'string' && id.trim() && !analysisEntityIds(project).includes(id), 'Note ID must be unique.');
+  requireAnalysisCondition(['token', 'proposition'].includes(targetType), 'Choose a word or proposition note target.');
+  const known = targetType === 'token'
+    ? adaptAnalysisPassage(project.passage).tokens.some(item => item.id === targetId)
+    : project.propositions.some(item => item.id === targetId);
+  requireAnalysisCondition(known, 'Choose a known note target.');
+  requireAnalysisCondition(typeof text === 'string' && text.trim(), 'Write a note before saving.');
+  return { ...project, notes: [...(project.notes ?? []), { id, targetType, targetId, text: text.trim() }] };
+}
+
+export function removeAnalysisNote(project, id) {
+  requireAnalysisCondition((project.notes ?? []).some(item => item.id === id), 'Choose a known note.');
+  return { ...project, notes: project.notes.filter(item => item.id !== id) };
 }
 
 /** Identify a reusable, source-anchored constituent without assigning its tokens again.
@@ -288,7 +308,8 @@ export function addAnalysisRelation(project, { id, from, to, label, type }) {
 export function removeAnalysisProposition(project, id) {
   return { ...project, propositions: project.propositions.filter(item => item.id !== id),
     groups: project.groups.filter(group => !group.propositionIds.includes(id)),
-    relations: project.relations.filter(item => item.from !== id && item.to !== id) };
+    relations: project.relations.filter(item => item.from !== id && item.to !== id),
+    notes: (project.notes ?? []).filter(item => item.targetType !== 'proposition' || item.targetId !== id) };
 }
 
 /** Derive an ordered bracket tree; semantic edges remain a separate graph.

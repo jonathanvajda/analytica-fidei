@@ -94,8 +94,10 @@ There is no silent storage fallback advertised as a successful persistent save.
    vocabulary with formal definitions, inverse-direction guidance, migration rules,
    and RDF predicates. The first controlled selector and direction explanation are
    implemented.
-4. **Grammatical notes (UR-30):** add source-anchored and proposition-anchored notes
-   through the same validated command/history path.
+4. **Grammatical-note refinement (UR-30):** basic word-anchored and
+   proposition-anchored notes are implemented through the validated command/history
+   path. Next, add note editing, constituent/relationship targets, optional note
+   categories, and provenance when automated or imported annotations are introduced.
 
 1. Identify the actual SBLGNT input files and release/license manifests. Build corpus
    loaders and a coverage-aware edition registry using the shared Greek and OSHB
@@ -114,7 +116,7 @@ There is no silent storage fallback advertised as a successful persistent save.
 
 Initial requirement coverage is partial: UR-01/04 (local projects), UR-08/09/10/13/14
 (source staging and coverage), portions of UR-22/23/24/28/29/31/32/33/35/38/39/40
-(manual grammatical, proposition, relation, history, and canvas editing), UR-11/51
+(manual grammatical, proposition, relation, history, notes, and canvas editing), UR-11/51
 (supplied annotations and explicit missing-data display), the reusable-constituent
 authoring foundation for UR-81, basic connective-anchor authoring for UR-82, and the contiguous/laminar
 constraints of UR-72–76. Model support without an authoring UI is not counted as a
