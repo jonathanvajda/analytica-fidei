@@ -24,6 +24,7 @@ body{background:var(--paper)}
 .semantic-badge.note{display:inline-flex;align-items:center;gap:.2rem;border-color:#d7c9a9;background:#fff9e9;color:#765d2e}.semantic-badge.note .quiet{padding:0 .15rem;opacity:.7;color:inherit}
 .canvas-popover textarea{width:100%;resize:vertical;border:1px solid #becbc2;border-radius:4px;padding:.55rem;background:#fff;color:var(--ink);font:inherit}
 @media(min-width:1001px){.canvas-toolbar{flex-wrap:nowrap;overflow-x:auto}.canvas-toolbar>.toolbar{flex-wrap:nowrap;flex-shrink:0}}
+@media(max-width:680px){.view-actions{max-width:100%;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:thin}}
 
 /* UR-48: explicit dark presentation; semantic colors retain their meaning. */
 :root[data-theme=dark]{color-scheme:dark;--ink:#e6eee9;--muted:#a8b8b0;--accent:#b8dacd;--accent-raised:#356f61;--gold:#d0a85f;--cream:#f6efe2;--paper:#0d211d;--line:#354b44;--soft:#1b342d;--error:#ef9a90;background:var(--paper)}
@@ -43,4 +44,5 @@ body{background:var(--paper)}
 :root[data-theme=dark] .relation-chip,:root[data-theme=dark] .semantic-badge.connective{background:#3a3020;border-color:#705d38;color:#efd39b}
 :root[data-theme=dark] .semantic-badge.note{background:#3b321f;border-color:#75613a;color:#efd59e}
 :root[data-theme=dark] #feedback[data-error=true]{background:#421f1c;color:#ffb0a7}
+.canvas-word.has-gloss{height:50px;flex-direction:column;line-height:1.05;overflow:visible}.word-gloss{margin-top:.18rem;color:#846c3f;font:600 10px/1.1 system-ui,sans-serif;max-width:100%;overflow:hidden;text-overflow:ellipsis}.word-surface{display:block}:root[data-theme=dark] .word-gloss{color:#e0bc78}
 @media(max-width:680px){.brand img{width:34px;height:34px}.brand-name{font-size:1rem}.brand-name small{display:none}}

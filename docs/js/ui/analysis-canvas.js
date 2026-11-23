@@ -50,11 +50,14 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
   }
 
   function renderWord(word, block) {
-    const button = el('button', { text: word.text, type: 'button', className: 'token canvas-word',
+    const gloss = state.showGlosses ? model.unit.annotations.find(item => item.kind === 'gloss' && item.targetTokenId === word.id && item.status !== 'unavailable') : null;
+    const button = el('button', { type: 'button', className: `token canvas-word${gloss ? ' has-gloss' : ''}`,
       lang: word.language, dir: 'auto', 'data-token-id': word.id, 'data-column': word.column, 'data-row': word.row,
       'aria-pressed': state.selectedTokens.has(word.id),
       'aria-label': `${word.text} · ${block.kind === 'source' ? 'unassigned' : `proposition ${state.project.propositions.findIndex(item => item.id === block.id) + 1}`} · column ${word.column + 1}, row ${word.row + 1}`,
       title: 'Drag to place · Arrow keys to nudge · Double-click for word details' });
+    button.append(el('span', { className: 'word-surface', text: word.text }),
+      ...(gloss ? [el('span', { className: 'word-gloss', text: gloss.value, lang: gloss.language, dir: 'auto' })] : []));
     const x = model.gutter + word.column * CELL;
     const y = block.wordY + word.row * ROW;
     const elements = [positionElement(button, x, y, word.width * CELL - 4)];

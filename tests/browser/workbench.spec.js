@@ -301,6 +301,26 @@ test('Hebrew uses RTL word flow on mobile and canvas scrolling stays inside its 
   await page.screenshot({ path: testInfo.outputPath('hebrew-mobile.png'), fullPage: true });
 });
 
+test('supplied lexical glosses form a persistent optional canvas layer', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);
+  const passage = { source: { sourceId: 'gloss-fixture', version: '1', language: 'grc' }, unitKey: 'John.1.1',
+    glossLanguage: 'en', text: 'λόγος', records: [{ text: 'λόγος', start: 0, end: 5, gloss: 'word' }] };
+  await page.getByText('Practice texts & single-passage import', { exact: true }).click();
+  await page.locator('#project-name').fill('Gloss analysis');
+  await page.locator('#passage-file').setInputFiles({ name: 'gloss.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(passage)) });
+  await expect(page.getByRole('button', { name: 'Show glosses', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Show glosses', exact: true }).click();
+  await expect(page.locator('.word-gloss')).toHaveText('word');
+  await expect(page.locator('.word-gloss')).toHaveAttribute('lang', 'en');
+  await page.getByRole('button', { name: 'Hide glosses', exact: true }).click();
+  await expect(page.locator('.word-gloss')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Show glosses', exact: true }).click();
+  await page.reload();
+  await page.getByRole('button', { name: 'Gloss analysis', exact: true }).click();
+  await expect(page.locator('.word-gloss')).toHaveText('word');
+});
+
 test('invalid imports preserve the active analysis and imported markup is text', async ({ page }) => {
   await createPracticeProject(page);
   await page.getByRole('button', { name: 'Projects', exact: true }).click();

@@ -14,6 +14,7 @@ import { createEditionBrowser } from './ui/edition-browser.js';
 
 const $ = selector => document.querySelector(selector);
 const THEME_STORAGE_KEY = 'analytica-fidei-theme';
+const GLOSS_STORAGE_KEY = 'analytica-fidei-show-glosses';
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
@@ -26,6 +27,9 @@ let savedTheme = null;
 try { savedTheme = localStorage.getItem(THEME_STORAGE_KEY); } catch { /* Preference persistence is optional. */ }
 applyTheme(savedTheme === 'dark' || savedTheme === 'light' ? savedTheme
   : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+let showGlosses = false;
+try { showGlosses = localStorage.getItem(GLOSS_STORAGE_KEY) === 'true'; } catch { /* Optional preference. */ }
 
 let repository = null;
 let project = null;
@@ -167,11 +171,15 @@ function renderProject() {
   $('#passage-reference').textContent = unit.reference?.display ?? unit.unitKey;
   $('#original-text').textContent = unit.text ?? 'Exact source text was not supplied. Individual tokens are preserved.';
   $('#original-text').lang = unit.source.language;
+  const hasGlosses = unit.annotations.some(item => item.kind === 'gloss' && item.status !== 'unavailable');
+  $('#toggle-glosses').disabled = !hasGlosses;
+  $('#toggle-glosses').setAttribute('aria-pressed', String(hasGlosses && showGlosses));
+  $('#toggle-glosses').textContent = !hasGlosses ? 'Glosses unavailable' : showGlosses ? 'Hide glosses' : 'Show glosses';
   renderCanvas();
 }
 
 function renderCanvas() {
-  canvas.render({ project, selectedTokens, selectedPropositions, focusedRelationId });
+  canvas.render({ project, selectedTokens, selectedPropositions, focusedRelationId, showGlosses });
   updateCanvasActions();
 }
 
@@ -386,6 +394,13 @@ $('#theme-toggle').addEventListener('click', () => {
   const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
   applyTheme(theme);
   try { localStorage.setItem(THEME_STORAGE_KEY, theme); } catch { /* Keep the in-session theme. */ }
+});
+$('#toggle-glosses').addEventListener('click', () => {
+  showGlosses = !showGlosses;
+  $('#toggle-glosses').setAttribute('aria-pressed', String(showGlosses));
+  $('#toggle-glosses').textContent = showGlosses ? 'Hide glosses' : 'Show glosses';
+  try { localStorage.setItem(GLOSS_STORAGE_KEY, String(showGlosses)); } catch { /* Keep the in-session layer. */ }
+  renderCanvas();
 });
 $('#reset-layout').addEventListener('click', () => runUiOperation(async () => {
   await persistProject(resetAnalysisCanvas(project)); report('Word positions reset. Propositions, groups, and relationships are preserved.');

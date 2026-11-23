@@ -124,6 +124,10 @@ complete requirement.
 
 UR-48 has a persistent explicit light/dark theme covering the current interactive
 workbench. Publication/export theme consistency remains future work under UR-59.
+UR-43 has an initial optional lexical-gloss canvas layer. It renders only supplied
+gloss annotations with their declared language, explicitly disables itself when
+coverage is absent, and remains presentation state rather than analysis data. Other
+annotation layers and export parity remain future work.
 UR-05's RDF export and other full-spec acceptance gates are not complete.
 
 ## Specification provenance
