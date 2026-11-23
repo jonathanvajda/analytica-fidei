@@ -1,6 +1,8 @@
 import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, addAnalysisProposition,
   removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
-  DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor } from './core/project.js';
+  DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
+  addAnalysisConstituent, attachAnalysisConstituent, detachAnalysisConstituent,
+  removeAnalysisTokensFromProposition } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -42,7 +44,7 @@ function showProjectDrawer(show) {
 }
 
 function closeEditors() {
-  for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#word-inspector']) $(selector).hidden = true;
+  for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#role-form', '#word-inspector']) $(selector).hidden = true;
   $('#context-drawer').hidden = true;
   $('#toggle-inspector').setAttribute('aria-expanded', 'false');
   $('#inspector-empty').hidden = false;
@@ -99,13 +101,17 @@ async function refreshProjectList() {
 const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), viewport: $('#canvas-viewport'), sizer: $('#canvas-sizer'),
   onSelectWord: selectCanvasWord,
   onInspectWord: inspectCanvasWord,
-  onMoveWord: (tokenId, column, row, propositionId = null) => runUiOperation(async () => {
-    const reassigned = propositionId && !project.propositions.find(item => item.id === propositionId)?.tokenIds.includes(tokenId);
-    const semanticProject = reassigned ? addAnalysisTokenToProposition(project, { propositionId, tokenId }) : project;
+  onMoveWord: (tokenId, column, row, target = null) => runUiOperation(async () => {
+    const current = project.propositions.find(item => item.tokenIds.includes(tokenId));
+    const reassigned = target?.kind === 'proposition' && current?.id !== target.id;
+    const returned = target?.kind === 'source' && Boolean(current);
+    let semanticProject = project;
+    if (reassigned) semanticProject = addAnalysisTokenToProposition(project, { propositionId: target.id, tokenId });
+    if (returned) semanticProject = removeAnalysisTokensFromProposition(project, { propositionId: current.id, tokenIds: [tokenId] });
     await persistProject(placeAnalysisCanvasWord(semanticProject, { tokenId, column, row }, { tokenWidths: canvas.getWidths() }));
     canvas.focusWord(tokenId);
-    report(reassigned ? 'Missed word added to the proposition and placed on its grid.'
-      : 'Word placed on the grid. Source order and proposition membership are preserved.');
+    report(reassigned ? 'Missed word added to the proposition and placed on its grid.' : returned
+      ? 'Word returned to unassigned source staging.' : 'Word placed on the grid. Source order and proposition membership are preserved.');
   }),
   onToggleProposition: (id, checked) => {
     if (checked) selectedPropositions.add(id); else selectedPropositions.delete(id);
@@ -123,6 +129,10 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
   onRemovePropositionAnchor: (propositionId, tokenId) => runUiOperation(async () => {
     await persistProject(removeAnalysisPropositionAnchor(project, { propositionId, tokenId }));
     report('Connective anchor removed. The source word and discourse relationships were retained.');
+  }),
+  onDetachConstituent: (propositionId, constituentId, role) => runUiOperation(async () => {
+    await persistProject(detachAnalysisConstituent(project, { propositionId, constituentId, role }));
+    report('Grammatical role removed. The reusable constituent and source words were retained.');
   }),
   onFocusRelation: id => { focusedRelationId = focusedRelationId === id ? null : id; renderCanvas(); },
 });
@@ -149,11 +159,17 @@ function renderCanvas() {
 }
 
 function updateCanvasActions() {
-  $('#selection-count').textContent = selectedTokens.size ? `${selectedTokens.size} words selected` : 'Select words on the canvas';
+  const selectionParts = [];
+  if (selectedTokens.size) selectionParts.push(`${selectedTokens.size} ${selectedTokens.size === 1 ? 'word' : 'words'}`);
+  if (selectedPropositions.size) selectionParts.push(`${selectedPropositions.size} ${selectedPropositions.size === 1 ? 'proposition' : 'propositions'}`);
+  $('#selection-count').textContent = selectionParts.length ? `${selectionParts.join(' · ')} selected` : 'Select words or propositions on the canvas';
   $('#add-proposition').disabled = !selectedTokens.size;
+  const selectedOwners = new Set([...selectedTokens].map(id => project.propositions.find(item => item.tokenIds.includes(id))?.id));
+  $('#return-source').disabled = !selectedTokens.size || selectedOwners.size !== 1 || selectedOwners.has(undefined);
   $('#open-group').disabled = selectedPropositions.size < 2;
   $('#open-relation').disabled = selectedPropositions.size !== 2;
   $('#open-anchor').disabled = selectedPropositions.size !== 1 || selectedTokens.size !== 1;
+  $('#open-role').disabled = selectedPropositions.size !== 1 || (!selectedTokens.size && !project.constituents.length);
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
   const unit = activeUnit();
   $('#assignment-summary').textContent = `${project.propositions.flatMap(item => item.tokenIds).length}/${unit.tokens.length} words assigned · ${project.propositions.length} propositions · ${project.relations.length} relationships`;
@@ -173,7 +189,7 @@ function selectCanvasWord(id, extend) {
   }
   // Keep the word DOM stable so double-clicks, focus and touch targets remain intact.
   canvas.updateSelection(selectedTokens); updateCanvasActions(); canvas.focusWord(id);
-  if (!$('#context-drawer').hidden && $('#group-form').hidden && $('#relation-form').hidden && $('#anchor-form').hidden) inspectCanvasWord(id);
+  if (!$('#context-drawer').hidden && $('#group-form').hidden && $('#relation-form').hidden && $('#anchor-form').hidden && $('#role-form').hidden) inspectCanvasWord(id);
 }
 
 function inspectCanvasWord(id) {
@@ -211,6 +227,12 @@ $('#add-proposition').addEventListener('click', () => runUiOperation(async () =>
   const next = addAnalysisProposition(project, { id: crypto.randomUUID(), tokenIds });
   selectedTokens.clear();
   await persistProject(next); report('Proposition created on the canvas. Drag its words to arrange the sentence flow.');
+}));
+$('#return-source').addEventListener('click', () => runUiOperation(async () => {
+  const proposition = project.propositions.find(item => [...selectedTokens].every(id => item.tokenIds.includes(id)));
+  const next = removeAnalysisTokensFromProposition(project, { propositionId: proposition?.id, tokenIds: [...selectedTokens] });
+  selectedTokens.clear(); selectionAnchor = null;
+  await persistProject(next); report('Selected words returned to unassigned source staging.');
 }));
 
 $('#open-group').addEventListener('click', () => openCanvasEditor('#group-form'));
@@ -261,6 +283,42 @@ $('#anchor-form').addEventListener('submit', event => {
     selectedTokens.clear(); selectedPropositions.clear(); $('#anchor-function').value = ''; closeEditors();
     await persistProject(next);
     report('Connective cue anchored to the proposition without asserting a discourse relationship.');
+  });
+});
+
+function configureRoleForm() {
+  const unit = activeUnit();
+  const selectedIds = unit.tokens.filter(token => selectedTokens.has(token.id)).map(token => token.id);
+  const options = [];
+  if (selectedIds.length) options.push(el('option', { value: '__selected', text: `Selected words: ${unit.tokens.filter(token => selectedTokens.has(token.id)).map(token => token.text).join(' ')}` }));
+  options.push(...project.constituents.map(constituent => el('option', { value: constituent.id,
+    text: constituent.label || unit.tokens.filter(token => constituent.tokenIds.includes(token.id)).map(token => token.text).join(' ') })));
+  $('#role-constituent').replaceChildren(...options);
+  const creating = $('#role-constituent').value === '__selected';
+  $('#role-label').hidden = $('#role-label-field').hidden = !creating;
+  $('#role-realization').disabled = creating;
+  if (creating) $('#role-realization').value = 'explicit'; else $('#role-realization').value = 'implicit';
+}
+
+$('#open-role').addEventListener('click', () => { configureRoleForm(); openCanvasEditor('#role-form'); });
+$('#role-constituent').addEventListener('change', configureRoleForm);
+$('#role-form').addEventListener('submit', event => {
+  event.preventDefault();
+  runUiOperation(async () => {
+    const propositionId = [...selectedPropositions][0];
+    const selected = $('#role-constituent').value;
+    let next = project;
+    let constituentId = selected;
+    if (selected === '__selected') {
+      constituentId = crypto.randomUUID();
+      const tokenIds = activeUnit().tokens.filter(token => selectedTokens.has(token.id)).map(token => token.id);
+      next = addAnalysisConstituent(next, { id: constituentId, tokenIds, label: $('#role-label').value });
+    }
+    next = attachAnalysisConstituent(next, { propositionId, constituentId, role: $('#role-type').value,
+      realization: selected === '__selected' ? 'explicit' : $('#role-realization').value });
+    selectedTokens.clear(); selectedPropositions.clear(); $('#role-label').value = ''; $('#role-type').value = ''; closeEditors();
+    await persistProject(next);
+    report(selected === '__selected' ? 'Explicit grammatical constituent created and assigned.' : 'Reusable constituent assigned to the proposition.');
   });
 });
 $('#remove-relation').addEventListener('click', () => runUiOperation(async () => {

@@ -1,7 +1,8 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup,
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
   addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor,
-  addAnalysisTokenToProposition, removeAnalysisPropositionAnchor } from '../docs/js/core/project.js';
+  addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
+  removeAnalysisTokensFromProposition } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
 import { segmentLinguisticWords } from '../docs/js/vendor/linguistic-adapters/index.js';
 
@@ -57,6 +58,26 @@ test('an adjacent missed word can be added to a proposition without duplicating 
   expect(project.propositions[0].tokenIds).toEqual(ids.slice(0, 4));
   expect(() => addAnalysisTokenToProposition(project, { propositionId: 'p', tokenId: ids[5] })).toThrow(/adjacent/);
   expect(() => addAnalysisTokenToProposition(project, { propositionId: 'p', tokenId: ids[2] })).toThrow(/already/);
+});
+
+test('edge words can return to source without splitting or emptying a proposition', () => {
+  let project = fixture();
+  const ids = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
+  project = addAnalysisProposition(project, { id: 'p', tokenIds: ids.slice(1, 5) });
+  project = removeAnalysisTokensFromProposition(project, { propositionId: 'p', tokenIds: [ids[1], ids[2]] });
+  expect(project.propositions[0].tokenIds).toEqual(ids.slice(3, 5));
+  expect(() => removeAnalysisTokensFromProposition(project, { propositionId: 'p', tokenIds: [ids[3]] })).not.toThrow();
+  expect(() => removeAnalysisTokensFromProposition(project, { propositionId: 'p', tokenIds: ids.slice(3, 5) })).toThrow(/proposition itself/);
+});
+
+test('returning a middle word or an explicitly role-anchored word is rejected', () => {
+  let project = fixture();
+  const ids = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
+  project = addAnalysisProposition(project, { id: 'p', tokenIds: ids.slice(0, 4) });
+  expect(() => removeAnalysisTokensFromProposition(project, { propositionId: 'p', tokenIds: [ids[1]] })).toThrow(/edge/);
+  project = addAnalysisConstituent(project, { id: 'verb', tokenIds: [ids[0]] });
+  project = attachAnalysisConstituent(project, { propositionId: 'p', constituentId: 'verb', role: 'predicate', realization: 'explicit' });
+  expect(() => removeAnalysisTokensFromProposition(project, { propositionId: 'p', tokenIds: [ids[0]] })).toThrow(/grammatical role/);
 });
 
 test('laminar groups derive one ordered primary tree', () => {
@@ -116,6 +137,9 @@ test('one source constituent can fill explicit and implicit proposition roles wi
   expect(project.propositions.flatMap(item => item.tokenIds)).toHaveLength(8);
   expect(() => attachAnalysisConstituent(project,
     { propositionId: 'p1', constituentId: 'people', role: 'object', realization: 'explicit' })).toThrow(/inside/);
+  project = detachAnalysisConstituent(project, { propositionId: 'p1', constituentId: 'people', role: 'subject' });
+  expect(project.propositions[1].constituentRoles).toEqual([]);
+  expect(project.constituents).toHaveLength(1);
 });
 
 test('connective anchors overlap source coverage without becoming duplicate proposition tokens', () => {

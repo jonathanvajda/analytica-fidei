@@ -80,12 +80,12 @@ There is no silent storage fallback advertised as a successful persistent save.
 
 ### Prioritized near-term backlog
 
-1. **Reusable constituent authoring (UR-23, UR-24, UR-28, UR-81):** add an
-   inspector workflow to create a constituent from selected source words, assign its
-   explicit role in one proposition, and reuse the same identity implicitly in other
-   propositions. Subjects, predicates/verbs, objects, determiners, and other roles
-   must use the same general mechanism. The model and canvas badges exist; creation,
-   editing, removal, and browser-level tests remain.
+1. **Reusable constituent refinement (UR-23, UR-24, UR-28, UR-81):** basic
+   inspector authoring is implemented: selected source words define a canonical
+   constituent with an explicit role, and that identity can be reused implicitly in
+   other propositions. Role assertions are independently removable. Next, add a
+   constituent-library editor for renaming/deleting orphaned entities, role-specific
+   validation, multiword phrase structure, and dependency targets.
 2. **Connective-anchor refinement (UR-82):** basic inspector authoring and removal
    are implemented. Next, add language-aware cue suggestions, freeform/extended
    functions, and relation-level or segment-level anchors without treating a cue as
@@ -116,7 +116,7 @@ Initial requirement coverage is partial: UR-01/04 (local projects), UR-08/09/10/
 (source staging and coverage), portions of UR-22/23/24/28/29/31/32/33/35/38/39/40
 (manual grammatical, proposition, relation, history, and canvas editing), UR-11/51
 (supplied annotations and explicit missing-data display), the reusable-constituent
-model for UR-81, basic connective-anchor authoring for UR-82, and the contiguous/laminar
+authoring foundation for UR-81, basic connective-anchor authoring for UR-82, and the contiguous/laminar
 constraints of UR-72–76. Model support without an authoring UI is not counted as a
 complete requirement.
 UR-05's RDF export and other full-spec acceptance gates are not complete.

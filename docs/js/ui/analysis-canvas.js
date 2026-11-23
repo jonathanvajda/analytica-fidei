@@ -23,7 +23,8 @@ function positionElement(element, left, top, width) {
  * @returns {{render:function(object):void,updateSelection:function(Set):void,setZoom:function(number):void,focusWord:function(string):void,getWidths:function():object}}
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
-  onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onRemovePropositionAnchor, onFocusRelation }) {
+  onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onRemovePropositionAnchor,
+  onDetachConstituent, onFocusRelation }) {
   let model;
   let state;
   let zoom = 1;
@@ -81,9 +82,13 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
       const roles = (proposition.constituentRoles ?? []).map(assertion => {
         const constituent = (state.project.constituents ?? []).find(item => item.id === assertion.constituentId);
         const name = constituent?.label || tokenText(constituent?.tokenIds ?? []) || 'constituent';
-        return el('span', { className: `semantic-badge ${assertion.realization}`,
-          text: `${assertion.realization === 'implicit' ? '↶ ' : ''}${assertion.role}: ${name}`,
-          title: `${assertion.realization} ${assertion.role}` });
+        const removeRole = el('button', { type: 'button', className: 'quiet', text: '×',
+          'aria-label': `Remove ${assertion.realization} ${assertion.role} ${name}` });
+        removeRole.addEventListener('click', () => onDetachConstituent(proposition.id, assertion.constituentId, assertion.role));
+        return el('span', { className: `semantic-badge role ${assertion.realization}`,
+          title: `${assertion.realization} ${assertion.role}` }, [
+          el('span', { text: `${assertion.realization === 'implicit' ? '↶ ' : ''}${assertion.role}: ${name}` }), removeRole,
+        ]);
       });
       const anchors = (proposition.anchors ?? []).map(anchor => {
         const word = model.unit.tokens.find(token => token.id === anchor.tokenId)?.text ?? 'source cue';
@@ -212,11 +217,12 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     if (event.clientY < bounds.top + 24) viewport.scrollTop -= 16;
     const rect = root.getBoundingClientRect();
     const localY = (event.clientY - rect.top) / zoom;
-    const hovered = model.blocks.find(block => block.kind === 'proposition' && localY >= block.top && localY < block.bottom);
-    const targetBlock = drag.block.kind === 'source' && hovered ? hovered : drag.block;
+    const hovered = model.blocks.find(block => localY >= block.top && localY < block.bottom);
+    const crossingBoundary = hovered && hovered.kind !== drag.block.kind;
+    const targetBlock = crossingBoundary ? hovered : drag.block;
     if (drag.targetBlock?.id !== targetBlock.id) {
       root.querySelector('.canvas-block.is-drop-target')?.classList.remove('is-drop-target');
-      if (targetBlock.kind === 'proposition' && targetBlock.id !== drag.block.id) {
+      if (targetBlock.id !== drag.block.id) {
         root.querySelector(`.canvas-block[data-block-id="${CSS.escape(targetBlock.id)}"]`)?.classList.add('is-drop-target');
       }
     }
@@ -241,7 +247,7 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     // Clear suppression after the pointer-generated click, including cancellation paths.
     setTimeout(() => { suppressClick = false; }, 0);
     if (commit) onMoveWord(previous.word.id, previous.column, previous.row,
-      previous.targetBlock?.kind === 'proposition' ? previous.targetBlock.id : null);
+      previous.targetBlock ? { kind: previous.targetBlock.kind, id: previous.targetBlock.id } : null);
   }
   root.addEventListener('pointerup', () => finishDrag(true));
   root.addEventListener('pointercancel', () => finishDrag(false));

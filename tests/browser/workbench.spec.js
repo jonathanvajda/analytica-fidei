@@ -100,7 +100,7 @@ test('dragging snaps a word into a grid cell, persists it, and supports undo/red
   await dragWord(page, word, 120, 52);
   await expect(word).toHaveAttribute('data-column', '5');
   await expect(word).toHaveAttribute('data-row', '1');
-  await expect(page.locator('#selection-count')).toHaveText('Select words on the canvas');
+  await expect(page.locator('#selection-count')).toHaveText('Select words or propositions on the canvas');
   await page.getByRole('button', { name: 'Undo last edit' }).click();
   await expect(word).toHaveAttribute('data-column', '0');
   await expect(word).toHaveAttribute('data-row', '0');
@@ -146,6 +146,44 @@ test('a selected word can be authored and removed as a connective proposition an
   await expect(page.locator('#feedback')).toContainText('Connective anchor removed');
 });
 
+test('an explicit verb can be defined once and reused implicitly in another proposition', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 3);
+  await createProposition(page, 3, 6);
+  await page.locator('.canvas-word').first().click();
+  await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
+  await page.getByRole('button', { name: 'Assign role', exact: true }).click();
+  await page.locator('#role-label').fill('shared verb');
+  await page.locator('#role-type').selectOption('predicate');
+  await page.getByRole('button', { name: 'Save grammatical role', exact: true }).click();
+  await expect(page.locator('#feedback')).toContainText('Explicit grammatical constituent');
+  await expect(page.locator('.semantic-badge.role.explicit')).toContainText('predicate: shared verb');
+
+  await page.getByRole('checkbox', { name: 'Select proposition 2', exact: true }).check();
+  await page.getByRole('button', { name: 'Assign role', exact: true }).click();
+  await page.locator('#role-type').selectOption('predicate');
+  await expect(page.locator('#role-realization')).toHaveValue('implicit');
+  await page.getByRole('button', { name: 'Save grammatical role', exact: true }).click();
+  await expect(page.locator('#feedback')).toContainText('Reusable constituent assigned');
+  await expect(page.locator('.semantic-badge.role.implicit')).toContainText('predicate: shared verb');
+  await page.getByRole('button', { name: 'Remove implicit predicate shared verb' }).click();
+  await expect(page.locator('.semantic-badge.role.implicit')).toHaveCount(0);
+  await expect(page.locator('.semantic-badge.role.explicit')).toHaveCount(1);
+});
+
+test('role and connective actions remain visible when enabled on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 600, height: 800 });
+  await createPracticeProject(page);
+  await createProposition(page, 0, 3);
+  await page.locator('.canvas-word').first().click();
+  await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
+  await expect(page.locator('#selection-count')).toContainText('1 word · 1 proposition selected');
+  await expect(page.getByRole('button', { name: 'Assign role', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Assign role', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Anchor connective', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Anchor connective', exact: true })).toBeEnabled();
+});
+
 test('dragging an adjacent missed source word into a proposition assigns it', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 1, 4);
@@ -163,6 +201,28 @@ test('dragging an adjacent missed source word into a proposition assigns it', as
   await expect(page.locator('#assignment-summary')).toContainText('4/');
   await page.getByRole('button', { name: 'Undo last edit' }).click();
   await expect(missed).toHaveAttribute('aria-label', /unassigned/);
+});
+
+test('an edge word can be dragged out of a proposition or returned with the toolbar', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 3);
+  const edge = page.locator('.canvas-word').first();
+  const edgeBox = await edge.boundingBox();
+  const sourceBox = await page.locator('.source-block').boundingBox();
+  await page.mouse.move(edgeBox.x + edgeBox.width / 2, edgeBox.y + edgeBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2, { steps: 12 });
+  await expect(page.locator('.source-block')).toHaveClass(/is-drop-target/);
+  await page.mouse.up();
+  await expect(page.locator('#feedback')).toContainText('returned to unassigned source');
+  await expect(edge).toHaveAttribute('aria-label', /unassigned/);
+  await expect(page.locator('#assignment-summary')).toContainText('2/');
+
+  const remainingEdge = page.locator('.canvas-word').nth(1);
+  await remainingEdge.click();
+  await expect(page.getByRole('button', { name: 'Return to source', exact: true })).toBeEnabled();
+  await page.getByRole('button', { name: 'Return to source', exact: true }).click();
+  await expect(page.locator('#assignment-summary')).toContainText('1/');
 });
 
 test('drag coordinates respect zoom and keyboard nudges use the same grid', async ({ page }) => {

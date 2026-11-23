@@ -128,6 +128,28 @@ export function addAnalysisTokenToProposition(project, { propositionId, tokenId 
   return next;
 }
 
+/** Return one or more edge words from a proposition to unassigned source staging. */
+export function removeAnalysisTokensFromProposition(project, { propositionId, tokenIds }) {
+  const unit = adaptAnalysisPassage(project.passage);
+  const proposition = project.propositions.find(item => item.id === propositionId);
+  requireAnalysisCondition(proposition, 'Choose a known proposition.');
+  requireAnalysisCondition(Array.isArray(tokenIds) && tokenIds.length > 0 && new Set(tokenIds).size === tokenIds.length,
+    'Choose one or more distinct proposition words.');
+  requireAnalysisCondition(tokenIds.every(id => proposition.tokenIds.includes(id)), 'Every returned word must belong to the proposition.');
+  const remaining = proposition.tokenIds.filter(id => !tokenIds.includes(id));
+  requireAnalysisCondition(remaining.length > 0, 'Remove the proposition itself to return all of its words to source.');
+  const indices = remaining.map(id => unit.tokens.findIndex(token => token.id === id));
+  requireAnalysisCondition(indices.every((index, position) => !position || index === indices[position - 1] + 1),
+    'Return words from an edge of the proposition so its textual span remains consecutive.');
+  const explicitRoles = (proposition.constituentRoles ?? []).filter(item => item.realization === 'explicit');
+  requireAnalysisCondition(explicitRoles.every(role => {
+    const constituent = project.constituents.find(item => item.id === role.constituentId);
+    return constituent.tokenIds.every(id => remaining.includes(id));
+  }), 'Remove the affected explicit grammatical role before returning its source word.');
+  return { ...project, propositions: project.propositions.map(item => item.id === propositionId
+    ? { ...item, tokenIds: remaining } : item) };
+}
+
 function analysisEntityIds(project) {
   return [...project.propositions, ...(project.constituents ?? []), ...project.groups, ...project.relations].map(item => item.id);
 }
@@ -170,6 +192,18 @@ export function attachAnalysisConstituent(project, { propositionId, constituentI
   const assertion = { constituentId, role: role.trim(), realization };
   return { ...project, propositions: project.propositions.map(item => item.id === propositionId
     ? { ...item, constituentRoles: [...roles, assertion] } : item) };
+}
+
+/** Remove one role assertion while retaining the reusable constituent for other propositions. */
+export function detachAnalysisConstituent(project, { propositionId, constituentId, role }) {
+  const proposition = project.propositions.find(item => item.id === propositionId);
+  requireAnalysisCondition(proposition, 'Choose a known proposition.');
+  const roles = proposition.constituentRoles ?? [];
+  requireAnalysisCondition(roles.some(item => item.constituentId === constituentId && item.role === role),
+    'Choose a known constituent role.');
+  return { ...project, propositions: project.propositions.map(item => item.id === propositionId
+    ? { ...item, constituentRoles: roles.filter(assertion =>
+      assertion.constituentId !== constituentId || assertion.role !== role) } : item) };
 }
 
 /** Mark a source word (normally a conjunction or particle) as a proposition-level cue.
