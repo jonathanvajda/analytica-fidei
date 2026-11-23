@@ -1,6 +1,7 @@
 import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, addAnalysisProposition,
-  removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation } from './core/project.js';
-import { placeAnalysisCanvasWord, resetAnalysisCanvas } from './core/canvas-layout.js';
+  removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
+  DISCOURSE_RELATION_TYPES } from './core/project.js';
+import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
 import { createUiElement as el, downloadProjectBackup } from './ui/dom.js';
@@ -74,7 +75,7 @@ async function activateProject(next) {
   undoStack = []; redoStack = []; closeEditors();
   if (!next.layout) {
     const available = $('#main-content').getBoundingClientRect().width - 32;
-    const columns = Math.max(8, Math.min(36, Math.floor((available - 158) / 24)));
+    const columns = Math.max(8, Math.floor((available - 158) / 24));
     next = { ...next, layout: { columns, words: {} } };
   }
   showProjectDrawer(false);
@@ -98,10 +99,13 @@ async function refreshProjectList() {
 const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), viewport: $('#canvas-viewport'), sizer: $('#canvas-sizer'),
   onSelectWord: selectCanvasWord,
   onInspectWord: inspectCanvasWord,
-  onMoveWord: (tokenId, column, row) => runUiOperation(async () => {
-    await persistProject(placeAnalysisCanvasWord(project, { tokenId, column, row }, { tokenWidths: canvas.getWidths() }));
+  onMoveWord: (tokenId, column, row, propositionId = null) => runUiOperation(async () => {
+    const reassigned = propositionId && !project.propositions.find(item => item.id === propositionId)?.tokenIds.includes(tokenId);
+    const semanticProject = reassigned ? addAnalysisTokenToProposition(project, { propositionId, tokenId }) : project;
+    await persistProject(placeAnalysisCanvasWord(semanticProject, { tokenId, column, row }, { tokenWidths: canvas.getWidths() }));
     canvas.focusWord(tokenId);
-    report('Word placed on the grid. Source order and proposition membership are preserved.');
+    report(reassigned ? 'Missed word added to the proposition and placed on its grid.'
+      : 'Word placed on the grid. Source order and proposition membership are preserved.');
   }),
   onToggleProposition: (id, checked) => {
     if (checked) selectedPropositions.add(id); else selectedPropositions.delete(id);
@@ -221,14 +225,16 @@ $('#open-relation').addEventListener('click', () => {
     $(selector).replaceChildren(...project.propositions.map((item, index) => el('option', { value: item.id, text: `P${index + 1}` })));
     $(selector).value = id;
   }
+  $('#relation-type').replaceChildren(el('option', { value: '', text: 'Choose a relationship' }),
+    ...DISCOURSE_RELATION_TYPES.map(item => el('option', { value: item.id, text: item.label, title: item.description })));
   openCanvasEditor('#relation-form');
 });
 $('#relation-form').addEventListener('submit', event => {
   event.preventDefault();
   runUiOperation(async () => {
     const id = crypto.randomUUID();
-    const next = addAnalysisRelation(project, { id, from: $('#relation-from').value, to: $('#relation-to').value, label: $('#relation-label').value });
-    focusedRelationId = id; $('#relation-label').value = ''; closeEditors();
+    const next = addAnalysisRelation(project, { id, from: $('#relation-from').value, to: $('#relation-to').value, type: $('#relation-type').value });
+    focusedRelationId = id; $('#relation-type').value = ''; closeEditors();
     await persistProject(next); report('Directed relationship added beside its proposition.');
   });
 });
@@ -247,6 +253,10 @@ $('#toggle-inspector').addEventListener('click', () => {
 $('#canvas-zoom').addEventListener('change', event => canvas.setZoom(Number(event.target.value)));
 $('#reset-layout').addEventListener('click', () => runUiOperation(async () => {
   await persistProject(resetAnalysisCanvas(project)); report('Word positions reset. Propositions, groups, and relationships are preserved.');
+}));
+$('#widen-canvas').addEventListener('click', () => runUiOperation(async () => {
+  const next = widenAnalysisCanvas(project);
+  await persistProject(next); report(`Canvas widened to ${next.layout.columns} columns. Scroll horizontally to use the added space.`);
 }));
 
 function travelCanvasHistory(redo = false) {

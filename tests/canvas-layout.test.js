@@ -1,7 +1,7 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup, addAnalysisRelation,
   restoreAnalysisProject } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
-import { computeAnalysisCanvas, placeAnalysisCanvasWord, resetAnalysisCanvas } from '../docs/js/core/canvas-layout.js';
+import { computeAnalysisCanvas, placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from '../docs/js/core/canvas-layout.js';
 
 const createProject = language => createAnalysisProject({ id: 'test', name: 'Grid', passage: createPracticePassage(language) });
 const wordIds = project => adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
@@ -73,6 +73,16 @@ test('positions survive JSON restoration and old v1 backups still open', () => {
   expect(restoreAnalysisProject(JSON.parse(JSON.stringify(moved)))).toEqual(moved);
   expect(restoreAnalysisProject(project)).toEqual(project);
   expect(resetAnalysisCanvas(moved).layout.words).toEqual({});
+});
+
+test('the canvas can grow repeatedly without moving saved words', () => {
+  const project = placeAnalysisCanvasWord(createProject(), { tokenId: wordIds(createProject())[0], column: 8, row: 1 });
+  const once = widenAnalysisCanvas(project);
+  const twice = widenAnalysisCanvas(once, 24);
+  expect(once.layout.columns).toBe(project.layout.columns + 12);
+  expect(twice.layout.columns).toBe(project.layout.columns + 36);
+  expect(twice.layout.words).toEqual(project.layout.words);
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(twice)))).toEqual(twice);
 });
 
 test('invalid or foreign saved coordinates cannot enter the analysis', () => {

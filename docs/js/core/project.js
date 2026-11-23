@@ -7,11 +7,27 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{constituentId:string, role:string, realization:'explicit'|'implicit'}} AnalysisConstituentRole */
 /** @typedef {{tokenId:string, kind:'connective', function:string}} AnalysisAnchor */
 /** @typedef {{id:string, propositionIds:string[], label:string}} AnalysisGroup */
-/** @typedef {{id:string, from:string, to:string, label:string}} AnalysisRelation */
+/** @typedef {{id:string, from:string, to:string, label:string, type?:string}} AnalysisRelation */
 /** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], layout?:{columns:number,words:object}}} AnalysisProject */
 export function requireAnalysisCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
+
+/** Small initial vocabulary from DA-Spec §13. IDs are stable data; labels are presentation. */
+export const DISCOURSE_RELATION_TYPES = Object.freeze([
+  { id: 'cause', label: 'Cause', description: 'The source presents what brings about the target.' },
+  { id: 'reason', label: 'Reason', description: 'The source gives the reason for the target.' },
+  { id: 'purpose', label: 'Purpose', description: 'The source states the intended purpose of the target.' },
+  { id: 'result', label: 'Result', description: 'The source states a result of the target.' },
+  { id: 'condition', label: 'Condition', description: 'The source states a condition for the target.' },
+  { id: 'concession', label: 'Concession', description: 'The source concedes a point in relation to the target.' },
+  { id: 'contrast', label: 'Contrast', description: 'The source contrasts with the target.' },
+  { id: 'explanation', label: 'Explanation', description: 'The source explains the target.' },
+  { id: 'elaboration', label: 'Elaboration', description: 'The source develops the target with further detail.' },
+  { id: 'evidence', label: 'Evidence', description: 'The source supplies evidence for the target.' },
+  { id: 'sequence', label: 'Sequence', description: 'The source follows the target in discourse sequence.' },
+  { id: 'summary', label: 'Summary', description: 'The source summarizes the target.' },
+]);
 
 /** Normalize a parsed-record passage; no text reconstruction or guessed annotations.
  * @param {object} passage Shared token-record adapter input.
@@ -80,6 +96,35 @@ export function addAnalysisProposition(project, { id, tokenIds }) {
   const next = { ...project, propositions };
   requireAnalysisCondition(project.groups.every(group => group.propositionIds.length === groupBounds(next, group).end - groupBounds(next, group).start + 1),
     'Remove the surrounding group before inserting a proposition inside it.');
+  return next;
+}
+
+/** Add one previously unassigned source word to an existing proposition.
+ * The resulting proposition must remain a consecutive source span; this keeps
+ * coverage and proposition ordering deterministic while allowing missed edge
+ * words to be recovered by drag and drop.
+ * @param {AnalysisProject} project Current document.
+ * @param {{propositionId:string,tokenId:string}} input Drop target and source word.
+ * @returns {AnalysisProject}
+ */
+export function addAnalysisTokenToProposition(project, { propositionId, tokenId }) {
+  const unit = adaptAnalysisPassage(project.passage);
+  const proposition = project.propositions.find(item => item.id === propositionId);
+  requireAnalysisCondition(proposition, 'Choose a known proposition.');
+  const tokenIndex = unit.tokens.findIndex(token => token.id === tokenId);
+  requireAnalysisCondition(tokenIndex >= 0, 'Choose a word from this source passage.');
+  requireAnalysisCondition(!project.propositions.some(item => item.tokenIds.includes(tokenId)),
+    'That word already belongs to a proposition.');
+  const tokenIds = [...proposition.tokenIds, tokenId]
+    .sort((a, b) => unit.tokens.findIndex(token => token.id === a) - unit.tokens.findIndex(token => token.id === b));
+  const indices = tokenIds.map(id => unit.tokens.findIndex(token => token.id === id));
+  requireAnalysisCondition(indices.every((index, position) => !position || index === indices[position - 1] + 1),
+    'Drop an adjacent source word onto the proposition so its textual span remains consecutive.');
+  const propositions = project.propositions.map(item => item.id === propositionId ? { ...item, tokenIds } : item)
+    .sort((a, b) => unit.tokens.findIndex(token => token.id === a.tokenIds[0]) - unit.tokens.findIndex(token => token.id === b.tokenIds[0]));
+  const next = { ...project, propositions };
+  requireAnalysisCondition(project.groups.every(group => group.propositionIds.length === groupBounds(next, group).end - groupBounds(next, group).start + 1),
+    'This drop would disrupt an existing proposition group.');
   return next;
 }
 
@@ -179,12 +224,16 @@ export function addAnalysisGroup(project, { id, propositionIds, label = '' }) {
  * @param {AnalysisRelation} input Proposed directed edge.
  * @returns {AnalysisProject}
  */
-export function addAnalysisRelation(project, { id, from, to, label }) {
+export function addAnalysisRelation(project, { id, from, to, label, type }) {
   const known = new Set(project.propositions.map(item => item.id));
   requireAnalysisCondition(typeof id === 'string' && id.trim() && !analysisEntityIds(project).includes(id), 'Relation ID must be unique.');
   requireAnalysisCondition(known.has(from) && known.has(to) && from !== to, 'Choose two different propositions.');
-  requireAnalysisCondition(typeof label === 'string' && label.trim(), 'Describe the directed relation.');
-  return { ...project, relations: [...project.relations, { id, from, to, label: label.trim() }] };
+  const relationType = type ? DISCOURSE_RELATION_TYPES.find(item => item.id === type) : null;
+  requireAnalysisCondition(!type || relationType, 'Choose a supported discourse relationship.');
+  const resolvedLabel = relationType?.label ?? label;
+  requireAnalysisCondition(typeof resolvedLabel === 'string' && resolvedLabel.trim(), 'Describe the directed relation.');
+  return { ...project, relations: [...project.relations,
+    { id, from, to, label: resolvedLabel.trim(), ...(relationType ? { type: relationType.id } : {}) }] };
 }
 
 /** Remove a proposition and its dependent groups/relations, returning its words to staging.

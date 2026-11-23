@@ -1,5 +1,5 @@
 import { adaptAnalysisPassage } from './project.js';
-import { normalizeAnalysisPresentation, MAX_CANVAS_ROW } from './presentation.js';
+import { normalizeAnalysisPresentation, MAX_CANVAS_COLUMNS, MAX_CANVAS_ROW } from './presentation.js';
 
 export const CANVAS_CELL_WIDTH = 24;
 export const CANVAS_ROW_HEIGHT = 52;
@@ -126,4 +126,14 @@ export function placeAnalysisCanvasWord(project, { tokenId, column, row }, { tok
 /** Reset visual placement without deleting any analysis. */
 export function resetAnalysisCanvas(project) {
   return { ...project, layout: { columns: project.layout?.columns ?? 36, words: {} } };
+}
+
+/** Grow the horizontal grid without changing any word coordinates or semantics. */
+export function widenAnalysisCanvas(project, additionalColumns = 12) {
+  if (!Number.isInteger(additionalColumns) || additionalColumns < 1) throw new Error('Choose a positive canvas extension.');
+  const tokenIds = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
+  const presentation = normalizeAnalysisPresentation(project.layout, tokenIds);
+  const columns = Math.min(MAX_CANVAS_COLUMNS, presentation.columns + additionalColumns);
+  if (columns === presentation.columns) throw new Error('The canvas has reached its maximum supported width.');
+  return { ...project, layout: { ...presentation, columns } };
 }

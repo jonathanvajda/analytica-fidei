@@ -63,7 +63,7 @@
       <div class="canvas-toolbar">
         <div class="toolbar word-actions"><span id="selection-count" class="small">Select words on the canvas</span><button id="add-proposition" class="primary" disabled>Create proposition</button><button id="clear-selection" class="quiet">Clear</button></div>
         <div class="toolbar proposition-actions"><button id="open-group" disabled>Group selected</button><button id="open-relation" disabled>Connect selected</button></div>
-        <div class="toolbar view-actions"><button id="undo" disabled aria-label="Undo last edit">Undo</button><button id="redo" disabled aria-label="Redo last edit">Redo</button><button id="reset-layout" class="quiet">Reset positions</button><label class="zoom-label">Zoom<select id="canvas-zoom"><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label><button id="toggle-inspector" aria-expanded="false" aria-controls="context-drawer">Inspector</button></div>
+        <div class="toolbar view-actions"><button id="undo" disabled aria-label="Undo last edit">Undo</button><button id="redo" disabled aria-label="Redo last edit">Redo</button><button id="widen-canvas" title="Add horizontal grid space">Widen canvas</button><button id="reset-layout" class="quiet">Reset positions</button><label class="zoom-label">Zoom<select id="canvas-zoom"><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label><button id="toggle-inspector" aria-expanded="false" aria-controls="context-drawer">Inspector</button></div>
       </div>
       <div class="canvas-caption"><span id="passage-reference"></span><span>Drag words to snap · Arrow keys to nudge · Shift-click to select a range</span><details class="source-preview"><summary>Original text</summary><p id="original-text" dir="auto"></p></details></div>
       <div class="canvas-shell">
@@ -78,7 +78,9 @@
         <form id="relation-form" class="canvas-popover" hidden>
           <div class="popover-heading"><strong>Connect propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close relation editor">✕</button></div>
           <div class="relation-endpoints"><label>From<select id="relation-from" required></select></label><span aria-hidden="true">→</span><label>To<select id="relation-to" required></select></label></div>
-          <label for="relation-label">Relationship</label><input id="relation-label" required maxlength="120" placeholder="e.g. supports"><button class="primary" type="submit">Add relation</button>
+          <label for="relation-type">Discourse relationship</label><select id="relation-type" required><option value="">Choose a relationship</option></select>
+          <p class="small subtle relation-direction"><strong>Direction:</strong> the selected “From” proposition performs the chosen function in relation to “To.”</p>
+          <button class="primary" type="submit">Add relation</button>
         </form>
         <section id="word-inspector" class="canvas-popover inspector" hidden aria-label="Word details"><strong>Word details</strong><div id="word-details"></div></section>
         </aside>

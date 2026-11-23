@@ -1,6 +1,7 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup,
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
-  addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor } from '../docs/js/core/project.js';
+  addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor,
+  addAnalysisTokenToProposition } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
 import { segmentLinguisticWords } from '../docs/js/vendor/linguistic-adapters/index.js';
 
@@ -47,6 +48,17 @@ test('propositions are restored in source order independently of creation order'
   expect(project.propositions.map(item => item.id)).toEqual(['first', 'last']);
 });
 
+test('an adjacent missed word can be added to a proposition without duplicating assignment', () => {
+  let project = fixture();
+  const ids = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
+  project = addAnalysisProposition(project, { id: 'p', tokenIds: [ids[1], ids[2]] });
+  project = addAnalysisTokenToProposition(project, { propositionId: 'p', tokenId: ids[0] });
+  project = addAnalysisTokenToProposition(project, { propositionId: 'p', tokenId: ids[3] });
+  expect(project.propositions[0].tokenIds).toEqual(ids.slice(0, 4));
+  expect(() => addAnalysisTokenToProposition(project, { propositionId: 'p', tokenId: ids[5] })).toThrow(/adjacent/);
+  expect(() => addAnalysisTokenToProposition(project, { propositionId: 'p', tokenId: ids[2] })).toThrow(/already/);
+});
+
 test('laminar groups derive one ordered primary tree', () => {
   let project = withPropositions();
   project = addAnalysisGroup(project, { id: 'inner', propositionIds: ['p1', 'p2'], label: 'Support' });
@@ -75,6 +87,12 @@ test('semantic edges do not alter primary placement; dangling edges/groups are r
   expect(removed.groups).toEqual([]);
   expect(removed.relations).toEqual([]);
   expect(removed.propositions).toHaveLength(3);
+});
+
+test('controlled discourse relationships retain a stable type and canonical label', () => {
+  const project = addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'purpose' });
+  expect(project.relations[0]).toEqual({ id: 'r', from: 'p1', to: 'p0', type: 'purpose', label: 'Purpose' });
+  expect(() => addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'unknown' })).toThrow(/supported/);
 });
 
 test('entity IDs cannot collide across node/edge collections', () => {

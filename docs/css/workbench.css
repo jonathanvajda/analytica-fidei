@@ -18,4 +18,5 @@ body{background:var(--paper)}
 .brand-name{display:grid;white-space:nowrap}.brand-name i{font-weight:400}.brand-name small{margin-top:.28rem;color:#7e6b45;font:600 .54rem/1 system-ui,sans-serif;letter-spacing:.09em;text-transform:uppercase}
 .welcome{position:relative}.welcome:before{content:'';position:absolute;left:0;top:.15rem;bottom:.15rem;width:3px;background:linear-gradient(var(--accent),var(--gold));border-radius:3px}.welcome .eyebrow{color:#846c3f}.welcome h2{color:var(--accent)}
 .welcome .brand-context{max-width:560px;color:#7a7468;font-size:.82rem;line-height:1.65}
+.canvas-block.is-drop-target{background:#e8f1df;box-shadow:inset 4px 0 var(--gold)}
 @media(max-width:680px){.brand img{width:34px;height:34px}.brand-name{font-size:1rem}.brand-name small{display:none}}

@@ -41,8 +41,10 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function applyZoom() {
     if (!model) return;
+    const renderWidth = Math.max(model.width, viewport.clientWidth / zoom);
+    root.style.width = `${renderWidth}px`;
     root.style.transform = `scale(${zoom})`;
-    sizer.style.width = `${model.width * zoom}px`;
+    sizer.style.width = `${renderWidth * zoom}px`;
     sizer.style.height = `${model.height * zoom}px`;
   }
 
@@ -137,7 +139,6 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     state = nextState;
     widths = measureTokenWidths(state.project);
     model = computeAnalysisCanvas(state.project, { tokenWidths: widths });
-    root.style.width = `${model.width}px`;
     root.style.height = `${model.height}px`;
     root.replaceChildren(renderGroupBrackets(), ...model.blocks.flatMap(renderBlock), ...renderGroupLabels(), ...renderRelations());
     applyZoom();
@@ -207,10 +208,20 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     if (event.clientY > bounds.bottom - 24) viewport.scrollTop += 16;
     if (event.clientY < bounds.top + 24) viewport.scrollTop -= 16;
     const rect = root.getBoundingClientRect();
+    const localY = (event.clientY - rect.top) / zoom;
+    const hovered = model.blocks.find(block => block.kind === 'proposition' && localY >= block.top && localY < block.bottom);
+    const targetBlock = drag.block.kind === 'source' && hovered ? hovered : drag.block;
+    if (drag.targetBlock?.id !== targetBlock.id) {
+      root.querySelector('.canvas-block.is-drop-target')?.classList.remove('is-drop-target');
+      if (targetBlock.kind === 'proposition' && targetBlock.id !== drag.block.id) {
+        root.querySelector(`.canvas-block[data-block-id="${CSS.escape(targetBlock.id)}"]`)?.classList.add('is-drop-target');
+      }
+    }
+    drag.targetBlock = targetBlock;
     drag.column = Math.max(0, Math.min(model.presentation.columns - drag.word.width,
       Math.round(((event.clientX - rect.left) / zoom - drag.grabX - model.gutter) / CELL)));
-    drag.row = Math.max(0, Math.min(MAX_CANVAS_ROW, Math.round(((event.clientY - rect.top) / zoom - drag.grabY - drag.block.wordY) / ROW)));
-    positionElement(drag.preview, model.gutter + drag.column * CELL, drag.block.wordY + drag.row * ROW, drag.word.width * CELL - 4);
+    drag.row = Math.max(0, Math.min(MAX_CANVAS_ROW, Math.round((localY - drag.grabY - targetBlock.wordY) / ROW)));
+    positionElement(drag.preview, model.gutter + drag.column * CELL, targetBlock.wordY + drag.row * ROW, drag.word.width * CELL - 4);
     drag.preview.style.height = `${WORD_HEIGHT}px`;
     Object.assign(drag.ghost.style, { left: `${event.clientX - drag.grabX * zoom}px`, top: `${event.clientY - drag.grabY * zoom}px` });
   });
@@ -219,17 +230,20 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
     if (!drag) return;
     const previous = drag;
     drag = null;
+    root.querySelector('.canvas-block.is-drop-target')?.classList.remove('is-drop-target');
     previous.ghost?.remove(); previous.preview?.remove(); previous.button.classList.remove('is-dragging');
     if (previous.button.hasPointerCapture(previous.pointerId)) previous.button.releasePointerCapture(previous.pointerId);
     if (!previous.active) return;
     suppressClick = true;
     // Clear suppression after the pointer-generated click, including cancellation paths.
     setTimeout(() => { suppressClick = false; }, 0);
-    if (commit) onMoveWord(previous.word.id, previous.column, previous.row);
+    if (commit) onMoveWord(previous.word.id, previous.column, previous.row,
+      previous.targetBlock?.kind === 'proposition' ? previous.targetBlock.id : null);
   }
   root.addEventListener('pointerup', () => finishDrag(true));
   root.addEventListener('pointercancel', () => finishDrag(false));
   document.addEventListener('keydown', event => { if (event.key === 'Escape') finishDrag(false); });
+  new ResizeObserver(() => applyZoom()).observe(viewport);
 
   return { render, focusWord, getWidths: () => widths,
     updateSelection(selectedTokens) {

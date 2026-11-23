@@ -51,9 +51,9 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await expect(page.locator('.bracket')).toHaveCount(1);
   await selectPropositions(page, [1, 2]);
   await page.getByRole('button', { name: 'Connect selected', exact: true }).click();
-  await page.locator('#relation-label').fill('elicits');
+  await page.locator('#relation-type').selectOption('evidence');
   await page.getByRole('button', { name: 'Add relation', exact: true }).click();
-  await expect(page.locator('.relation-chip')).toHaveText('elicits → P2');
+  await expect(page.locator('.relation-chip')).toHaveText('Evidence → P2');
   await expect(page.locator('.relation-edge')).toHaveCount(1);
   await expect(page.locator('#context-drawer')).toBeHidden();
   const downloadPromise = page.waitForEvent('download');
@@ -63,7 +63,7 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await page.reload();
   await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
   await expect(page.locator('.bracket')).toHaveCount(1);
-  await expect(page.locator('.relation-chip')).toHaveText('elicits → P2');
+  await expect(page.locator('.relation-chip')).toHaveText('Evidence → P2');
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.locator('#project-file').setInputFiles(await download.path());
   await expect(page.locator('#active-project-name')).toHaveText('Test analysis (imported)');
@@ -111,6 +111,42 @@ test('dragging snaps a word into a grid cell, persists it, and supports undo/red
   await expect(word).toHaveAttribute('data-column', '5');
   await expect(word).toHaveAttribute('data-row', '1');
   await page.screenshot({ path: testInfo.outputPath('arranged-words.png'), fullPage: true });
+});
+
+test('canvas fills the viewport and can grow into horizontally scrollable space', async ({ page }) => {
+  await createPracticeProject(page);
+  const viewport = page.locator('#canvas-viewport');
+  const canvas = page.locator('#analysis-canvas');
+  const before = await viewport.evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+  const canvasWidth = await canvas.evaluate(element => element.getBoundingClientRect().width);
+  expect(canvasWidth).toBeGreaterThanOrEqual(before.clientWidth - 1);
+  await page.getByRole('button', { name: 'Widen canvas', exact: true }).click();
+  await expect(page.locator('#feedback')).toContainText('Scroll horizontally');
+  const after = await viewport.evaluate(element => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth }));
+  expect(after.scrollWidth).toBeGreaterThan(before.scrollWidth);
+  expect(after.scrollWidth).toBeGreaterThan(after.clientWidth);
+  await page.reload();
+  await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
+  await expect.poll(() => viewport.evaluate(element => element.scrollWidth)).toBe(after.scrollWidth);
+});
+
+test('dragging an adjacent missed source word into a proposition assigns it', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 1, 4);
+  const missed = page.locator('.canvas-word').first();
+  await expect(missed).toHaveAttribute('aria-label', /unassigned/);
+  const sourceBox = await missed.boundingBox();
+  const propositionBox = await page.locator('.proposition').boundingBox();
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(propositionBox.x + propositionBox.width / 2, propositionBox.y + propositionBox.height / 2, { steps: 12 });
+  await expect(page.locator('.proposition')).toHaveClass(/is-drop-target/);
+  await page.mouse.up();
+  await expect(page.locator('#feedback')).toContainText('Missed word added');
+  await expect(missed).toHaveAttribute('aria-label', /proposition 1/);
+  await expect(page.locator('#assignment-summary')).toContainText('4/');
+  await page.getByRole('button', { name: 'Undo last edit' }).click();
+  await expect(missed).toHaveAttribute('aria-label', /unassigned/);
 });
 
 test('drag coordinates respect zoom and keyboard nudges use the same grid', async ({ page }) => {

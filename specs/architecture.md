@@ -33,6 +33,9 @@ source order (right-to-left for Hebrew/Aramaic); dragging or nudging stores expl
 coordinates. Collision resolution clears occupied cells deterministically. Moving
 a word never changes source token order, proposition membership, or graph semantics.
 Rows expand a block and move following blocks/brackets rather than overlapping them.
+Dragging an unassigned word onto an adjacent proposition is an explicit semantic
+command: it extends that proposition only when the resulting source span remains
+consecutive. Other word movement remains presentation-only.
 New projects choose a viewport-appropriate grid width; saved widths stay fixed.
 
 All relationships appear as directed labels next to their originating proposition.
@@ -52,7 +55,10 @@ Group badges appear above their starting proposition, separate from words.
 Long labels are truncated visually with their full text in a title. This is not yet
 the spec's complete label measurement and publication export engine.
 
-Directed semantic relations have independent IDs, endpoints, and labels. They do
+Directed semantic relations have independent IDs, endpoints, stable vocabulary
+types, and labels. The relation editor explains that the source proposition performs
+the selected function in relation to the target. Legacy imported custom labels remain
+readable, while new UI-authored relations use the initial controlled vocabulary. They do
 not alter group containment. The general semantic graph does not impose the
 primary forest's acyclicity; primary groups and semantic edges are distinct.
 Group removal preserves semantic edges; proposition removal removes dangling
@@ -72,6 +78,24 @@ There is no silent storage fallback advertised as a successful persistent save.
 
 ## Next implementation milestones
 
+### Prioritized near-term backlog
+
+1. **Reusable constituent authoring (UR-23, UR-24, UR-28, UR-81):** add an
+   inspector workflow to create a constituent from selected source words, assign its
+   explicit role in one proposition, and reuse the same identity implicitly in other
+   propositions. Subjects, predicates/verbs, objects, determiners, and other roles
+   must use the same general mechanism. The model and canvas badges exist; creation,
+   editing, removal, and browser-level tests remain.
+2. **Connective-anchor authoring (UR-82):** expose the existing proposition-anchor
+   model in the inspector, including a reviewable cue function that remains distinct
+   from the discourse relation it may signal.
+3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
+   vocabulary with formal definitions, inverse-direction guidance, migration rules,
+   and RDF predicates. The first controlled selector and direction explanation are
+   implemented.
+4. **Grammatical notes (UR-30):** add source-anchored and proposition-anchored notes
+   through the same validated command/history path.
+
 1. Identify the actual SBLGNT input files and release/license manifests. Build corpus
    loaders and a coverage-aware edition registry using the shared Greek and OSHB
    profiles; add passage navigation and multiple analysis documents per project.
@@ -87,9 +111,13 @@ There is no silent storage fallback advertised as a successful persistent save.
 6. Add offline asset/corpus caching with an update strategy, install metadata, and
    browser verification after corpus-loading behavior is defined.
 
-Initial requirement coverage is partial: UR-01/04 (local projects), UR-08/09/10
-(source staging), portions of manual proposition/discourse editing and UR-11
-(supplied annotations), and the contiguous/laminar constraints of UR-72–76.
+Initial requirement coverage is partial: UR-01/04 (local projects), UR-08/09/10/13/14
+(source staging and coverage), portions of UR-22/23/24/28/29/31/32/33/35/38/39/40
+(manual grammatical, proposition, relation, history, and canvas editing), UR-11/51
+(supplied annotations and explicit missing-data display), the reusable-constituent
+model for UR-81, the connective-anchor model for UR-82, and the contiguous/laminar
+constraints of UR-72–76. Model support without an authoring UI is not counted as a
+complete requirement.
 UR-05's RDF export and other full-spec acceptance gates are not complete.
 
 ## Specification provenance

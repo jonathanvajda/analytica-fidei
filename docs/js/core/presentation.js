@@ -1,4 +1,5 @@
 export const DEFAULT_CANVAS_COLUMNS = 36;
+export const MAX_CANVAS_COLUMNS = 4096;
 export const MAX_CANVAS_ROW = 255;
 
 /** Validate optional presentation data independently of the semantic model.
@@ -8,7 +9,7 @@ export const MAX_CANVAS_ROW = 255;
  */
 export function normalizeAnalysisPresentation(input, tokenIds) {
   if (input === undefined) return { columns: DEFAULT_CANVAS_COLUMNS, words: {} };
-  if (!input || !Number.isInteger(input.columns) || input.columns < 8 || input.columns > 80 ||
+  if (!input || !Number.isInteger(input.columns) || input.columns < 8 || input.columns > MAX_CANVAS_COLUMNS ||
     !input.words || typeof input.words !== 'object' || Array.isArray(input.words)) throw new Error('Invalid canvas presentation.');
   const known = new Set(tokenIds);
   const words = Object.fromEntries(Object.entries(input.words).map(([id, point]) => {
