@@ -92,12 +92,13 @@ There is no silent storage fallback advertised as a successful persistent save.
    proof of a discourse relation.
 3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
    vocabulary with formal definitions, inverse-direction guidance, migration rules,
-   and RDF predicates. The first controlled selector and direction explanation are
-   implemented.
+   and RDF predicates. The controlled selector, direction explanation, and stable-ID
+   editing of a relationship's type and endpoints are implemented.
 4. **Grammatical-note refinement (UR-30):** basic word-anchored and
    proposition-anchored notes are implemented through the validated command/history
-   path. Next, add note editing, constituent/relationship targets, optional note
-   categories, and provenance when automated or imported annotations are introduced.
+   path. Stable-ID text editing is implemented for both targets. Next, add
+   constituent/relationship targets, optional note categories, and provenance when
+   automated or imported annotations are introduced.
 
 1. Identify the actual SBLGNT input files and release/license manifests. Build corpus
    loaders and a coverage-aware edition registry using the shared Greek and OSHB

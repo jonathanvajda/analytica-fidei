@@ -79,11 +79,11 @@
           <label for="group-label">Group label</label><input id="group-label" maxlength="120" placeholder="e.g. Main assertion"><button class="primary" type="submit">Apply group</button>
         </form>
         <form id="relation-form" class="canvas-popover" hidden>
-          <div class="popover-heading"><strong>Connect propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close relation editor">✕</button></div>
+          <div class="popover-heading"><strong id="relation-form-title">Connect propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close relation editor">✕</button></div>
           <div class="relation-endpoints"><label>From<select id="relation-from" required></select></label><span aria-hidden="true">→</span><label>To<select id="relation-to" required></select></label></div>
           <label for="relation-type">Discourse relationship</label><select id="relation-type" required><option value="">Choose a relationship</option></select>
           <p class="small subtle relation-direction"><strong>Direction:</strong> the selected “From” proposition performs the chosen function in relation to “To.”</p>
-          <button class="primary" type="submit">Add relation</button>
+          <button id="save-relation" class="primary" type="submit">Add relation</button>
         </form>
         <form id="anchor-form" class="canvas-popover" hidden>
           <div class="popover-heading"><strong>Anchor a connective cue</strong><button type="button" class="quiet" data-close-popover aria-label="Close connective editor">×</button></div>
@@ -110,14 +110,14 @@
           <button class="primary" type="submit">Save grammatical role</button>
         </form>
         <form id="note-form" class="canvas-popover" hidden>
-          <div class="popover-heading"><strong>Add an analysis note</strong><button type="button" class="quiet" data-close-popover aria-label="Close note editor">×</button></div>
+          <div class="popover-heading"><strong id="note-form-title">Add an analysis note</strong><button type="button" class="quiet" data-close-popover aria-label="Close note editor">×</button></div>
           <p id="note-target" class="small"></p><label for="note-text">Note</label><textarea id="note-text" required maxlength="1000" rows="5" placeholder="Record a grammatical or interpretive observation"></textarea>
           <button class="primary" type="submit">Save note</button>
         </form>
         <section id="word-inspector" class="canvas-popover inspector" hidden aria-label="Word details"><strong>Word details</strong><div id="word-details"></div></section>
         </aside>
       </div>
-      <div class="canvas-status"><span id="assignment-summary"></span><span id="relation-summary">Relationships appear beside their propositions.</span><button id="remove-relation" class="quiet danger" hidden>Remove focused relation</button></div>
+      <div class="canvas-status"><span id="assignment-summary"></span><span id="relation-summary">Relationships appear beside their propositions.</span><button id="edit-relation" class="quiet" hidden>Edit focused relation</button><button id="remove-relation" class="quiet danger" hidden>Remove focused relation</button></div>
     </section>
     <p id="feedback" role="status" aria-live="polite">Choose a practice text or import a passage to begin.</p>
   </main>

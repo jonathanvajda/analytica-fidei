@@ -2,7 +2,8 @@ import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, ad
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
   addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor,
   addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
-  removeAnalysisTokensFromProposition, addAnalysisNote, removeAnalysisNote } from '../docs/js/core/project.js';
+  removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
+  updateAnalysisRelation } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
 import { segmentLinguisticWords } from '../docs/js/vendor/linguistic-adapters/index.js';
 
@@ -113,6 +114,9 @@ test('semantic edges do not alter primary placement; dangling edges/groups are r
 test('controlled discourse relationships retain a stable type and canonical label', () => {
   const project = addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'purpose' });
   expect(project.relations[0]).toEqual({ id: 'r', from: 'p1', to: 'p0', type: 'purpose', label: 'Purpose' });
+  const revised = updateAnalysisRelation(project, { id: 'r', from: 'p0', to: 'p1', type: 'evidence' });
+  expect(revised.relations[0]).toEqual({ id: 'r', from: 'p0', to: 'p1', type: 'evidence', label: 'Evidence' });
+  expect(project.relations[0].type).toBe('purpose');
   expect(() => addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'unknown' })).toThrow(/supported/);
 });
 
@@ -122,6 +126,8 @@ test('word and proposition notes validate, round-trip, and clean up with their p
   project = addAnalysisNote(project, { id: 'word-note', targetType: 'token', targetId: tokenId, text: '  lexical observation  ' });
   project = addAnalysisNote(project, { id: 'prop-note', targetType: 'proposition', targetId: 'p0', text: 'Main assertion' });
   expect(project.notes.map(item => item.text)).toEqual(['lexical observation', 'Main assertion']);
+  project = updateAnalysisNote(project, { id: 'prop-note', text: ' Revised assertion ' });
+  expect(project.notes[1]).toEqual({ id: 'prop-note', targetType: 'proposition', targetId: 'p0', text: 'Revised assertion' });
   expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
   const removedNote = removeAnalysisNote(project, 'word-note');
   expect(removedNote.notes.map(item => item.id)).toEqual(['prop-note']);

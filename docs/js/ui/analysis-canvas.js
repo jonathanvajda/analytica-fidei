@@ -26,7 +26,7 @@ function positionElement(element, left, top, width) {
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
   onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onRemovePropositionAnchor,
-  onDetachConstituent, onRemoveNote, onFocusRelation }) {
+  onDetachConstituent, onEditNote, onRemoveNote, onFocusRelation }) {
   let model;
   let state;
   let zoom = 1;
@@ -112,10 +112,12 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
       });
       const notes = (state.project.notes ?? []).filter(note => note.targetType === 'proposition' && note.targetId === proposition.id)
         .map(note => {
+          const editNote = el('button', { type: 'button', className: 'quiet', text: 'Edit', 'aria-label': 'Edit proposition note' });
+          editNote.addEventListener('click', () => onEditNote(note.id));
           const removeNote = el('button', { type: 'button', className: 'quiet', text: '×', 'aria-label': 'Remove proposition note' });
           removeNote.addEventListener('click', () => onRemoveNote(note.id));
           return el('span', { className: 'semantic-badge note', title: note.text },
-            [el('span', { text: `Note: ${note.text}` }), removeNote]);
+            [el('span', { text: `Note: ${note.text}` }), editNote, removeNote]);
         });
       heading.append(el('label', {}, [checkbox, el('span', { text: `P${number}` })]), ...roles, ...anchors, ...notes, remove);
     } else heading.append(el('span', { className: 'source-heading', text: 'Source' }));

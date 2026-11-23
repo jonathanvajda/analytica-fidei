@@ -2,7 +2,8 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
   DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
   addAnalysisConstituent, attachAnalysisConstituent, detachAnalysisConstituent,
-  removeAnalysisTokensFromProposition, addAnalysisNote, removeAnalysisNote } from './core/project.js';
+  removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
+  updateAnalysisRelation } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -46,6 +47,8 @@ let selectedTokens = new Set();
 let selectedPropositions = new Set();
 let selectionAnchor = null;
 let focusedRelationId = null;
+let editingRelationId = null;
+let editingNoteId = null;
 let operationQueue = Promise.resolve();
 let undoStack = [];
 let redoStack = [];
@@ -169,6 +172,7 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
     await persistProject(detachAnalysisConstituent(project, { propositionId, constituentId, role }));
     report('Grammatical role removed. The reusable constituent and source words were retained.');
   }),
+  onEditNote: openNoteEditor,
   onRemoveNote: id => runUiOperation(async () => {
     await persistProject(removeAnalysisNote(project, id)); report('Analysis note removed.');
   }),
@@ -229,6 +233,7 @@ function updateCanvasActions() {
   const relation = project.relations.find(item => item.id === focusedRelationId);
   $('#relation-summary').textContent = relation ? `Focused: ${relation.label} · click its label to hide the connector` : 'Select a relationship label to trace its connection.';
   $('#remove-relation').hidden = !relation;
+  $('#edit-relation').hidden = !relation;
 }
 
 function selectCanvasWord(id, extend) {
@@ -256,11 +261,13 @@ function inspectCanvasWord(id) {
     ...annotations.map(item => el('p', { text: `${item.kind}: ${typeof item.value === 'string' ? item.value : JSON.stringify(item.value)} · ${item.scheme ?? 'unspecified scheme'} · ${item.status} · ${item.provenance.providerId}` })),
     ...(annotations.length ? [] : [el('p', { text: 'No lexical annotations supplied for this word.' })]),
     ...notes.map(note => {
+      const edit = el('button', { type: 'button', className: 'quiet', text: 'Edit', 'aria-label': 'Edit word note' });
+      edit.addEventListener('click', () => openNoteEditor(note.id));
       const remove = el('button', { type: 'button', className: 'quiet danger', text: 'Remove', 'aria-label': 'Remove word note' });
       remove.addEventListener('click', () => runUiOperation(async () => {
         await persistProject(removeAnalysisNote(project, note.id)); report('Analysis note removed.');
       }));
-      return el('div', { className: 'inspector-note' }, [el('p', { text: note.text }), remove]);
+      return el('div', { className: 'inspector-note' }, [el('p', { text: note.text }), edit, remove]);
     }),
     el('p', { className: 'subtle', text: `Source: ${unit.source.sourceId} · ${unit.source.version}` }),
     ...(project.passage.resources ?? []).map(resource => el('p', { className: 'small subtle', text: `${resource.kind}: ${resource.license} · ${resource.attribution}` })));
@@ -307,23 +314,33 @@ $('#group-form').addEventListener('submit', event => {
   });
 });
 
-$('#open-relation').addEventListener('click', () => {
-  const selected = [...selectedPropositions];
+function configureRelationForm(relation = null) {
+  const selected = relation ? [relation.from, relation.to] : [...selectedPropositions];
   for (const [selector, id] of [['#relation-from', selected[0]], ['#relation-to', selected[1]]]) {
     $(selector).replaceChildren(...project.propositions.map((item, index) => el('option', { value: item.id, text: `P${index + 1}` })));
     $(selector).value = id;
   }
   $('#relation-type').replaceChildren(el('option', { value: '', text: 'Choose a relationship' }),
     ...DISCOURSE_RELATION_TYPES.map(item => el('option', { value: item.id, text: item.label, title: item.description })));
+  $('#relation-type').value = relation?.type ?? '';
+  $('#relation-form-title').textContent = relation ? 'Edit discourse relationship' : 'Connect propositions';
+  $('#save-relation').textContent = relation ? 'Save relationship' : 'Add relation';
+}
+$('#open-relation').addEventListener('click', () => {
+  editingRelationId = null;
+  configureRelationForm();
   openCanvasEditor('#relation-form');
 });
 $('#relation-form').addEventListener('submit', event => {
   event.preventDefault();
   runUiOperation(async () => {
-    const id = crypto.randomUUID();
-    const next = addAnalysisRelation(project, { id, from: $('#relation-from').value, to: $('#relation-to').value, type: $('#relation-type').value });
+    const id = editingRelationId ?? crypto.randomUUID();
+    const input = { id, from: $('#relation-from').value, to: $('#relation-to').value, type: $('#relation-type').value };
+    const next = editingRelationId ? updateAnalysisRelation(project, input) : addAnalysisRelation(project, input);
+    const revised = Boolean(editingRelationId);
+    editingRelationId = null;
     focusedRelationId = id; $('#relation-type').value = ''; closeEditors();
-    await persistProject(next); report('Directed relationship added beside its proposition.');
+    await persistProject(next); report(revised ? 'Discourse relationship updated.' : 'Directed relationship added beside its proposition.');
   });
 });
 $('#open-anchor').addEventListener('click', () => {
@@ -383,7 +400,22 @@ $('#role-form').addEventListener('submit', event => {
   });
 });
 
-$('#open-note').addEventListener('click', () => {
+function openNoteEditor(id = null) {
+  editingNoteId = id;
+  const note = id ? project.notes.find(item => item.id === id) : null;
+  $('#note-form-title').textContent = note ? 'Edit analysis note' : 'Add an analysis note';
+  $('#note-text').value = note?.text ?? '';
+  if (note) {
+    if (note.targetType === 'token') {
+      const token = activeUnit().tokens.find(item => item.id === note.targetId);
+      $('#note-target').textContent = `Word: ${token.text}`;
+    } else {
+      const number = project.propositions.findIndex(item => item.id === note.targetId) + 1;
+      $('#note-target').textContent = `Proposition P${number}`;
+    }
+    openCanvasEditor('#note-form');
+    return;
+  }
   if (selectedTokens.size === 1) {
     const token = activeUnit().tokens.find(item => item.id === [...selectedTokens][0]);
     $('#note-target').textContent = `Word: ${token.text}`;
@@ -392,16 +424,30 @@ $('#open-note').addEventListener('click', () => {
     $('#note-target').textContent = `Proposition P${number}`;
   }
   openCanvasEditor('#note-form');
-});
+}
+$('#open-note').addEventListener('click', () => openNoteEditor());
 $('#note-form').addEventListener('submit', event => {
   event.preventDefault();
   runUiOperation(async () => {
-    const targetType = selectedTokens.size === 1 ? 'token' : 'proposition';
-    const targetId = targetType === 'token' ? [...selectedTokens][0] : [...selectedPropositions][0];
-    const next = addAnalysisNote(project, { id: crypto.randomUUID(), targetType, targetId, text: $('#note-text').value });
+    const revised = Boolean(editingNoteId);
+    let next;
+    if (editingNoteId) next = updateAnalysisNote(project, { id: editingNoteId, text: $('#note-text').value });
+    else {
+      const targetType = selectedTokens.size === 1 ? 'token' : 'proposition';
+      const targetId = targetType === 'token' ? [...selectedTokens][0] : [...selectedPropositions][0];
+      next = addAnalysisNote(project, { id: crypto.randomUUID(), targetType, targetId, text: $('#note-text').value });
+    }
+    editingNoteId = null;
     selectedTokens.clear(); selectedPropositions.clear(); $('#note-text').value = ''; closeEditors();
-    await persistProject(next); report('Analysis note saved.');
+    await persistProject(next); report(revised ? 'Analysis note updated.' : 'Analysis note saved.');
   });
+});
+$('#edit-relation').addEventListener('click', () => {
+  const relation = project.relations.find(item => item.id === focusedRelationId);
+  if (!relation) return;
+  editingRelationId = relation.id;
+  configureRelationForm(relation);
+  openCanvasEditor('#relation-form');
 });
 $('#remove-relation').addEventListener('click', () => runUiOperation(async () => {
   const next = { ...project, relations: project.relations.filter(item => item.id !== focusedRelationId) };

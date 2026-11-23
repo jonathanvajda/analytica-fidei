@@ -56,6 +56,10 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await expect(page.locator('.relation-chip')).toHaveText('Evidence → P2');
   await expect(page.locator('.relation-edge')).toHaveCount(1);
   await expect(page.locator('#context-drawer')).toBeHidden();
+  await page.getByRole('button', { name: 'Edit focused relation' }).click();
+  await page.locator('#relation-type').selectOption('reason');
+  await page.getByRole('button', { name: 'Save relationship' }).click();
+  await expect(page.locator('.relation-chip')).toHaveText('Reason → P2');
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.getByRole('button', { name: 'Export backup' }).click();
@@ -64,7 +68,7 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await page.reload();
   await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
   await expect(page.locator('.bracket')).toHaveCount(1);
-  await expect(page.locator('.relation-chip')).toHaveText('Evidence → P2');
+  await expect(page.locator('.relation-chip')).toHaveText('Reason → P2');
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.locator('#project-file').setInputFiles(await download.path());
   await expect(page.locator('#active-project-name')).toHaveText('Test analysis (imported)');
@@ -238,7 +242,7 @@ test('role and connective actions remain visible when enabled on a narrow screen
   await expect(page.getByRole('button', { name: 'Anchor connective', exact: true })).toBeEnabled();
 });
 
-test('a proposition note can be authored, persisted, displayed, and removed', async ({ page }) => {
+test('a proposition note can be authored, revised, persisted, and removed', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 0, 3);
   await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
@@ -246,9 +250,14 @@ test('a proposition note can be authored, persisted, displayed, and removed', as
   await page.locator('#note-text').fill('The main assertion');
   await page.getByRole('button', { name: 'Save note', exact: true }).click();
   await expect(page.locator('.semantic-badge.note')).toContainText('The main assertion');
+  await page.getByRole('button', { name: 'Edit proposition note' }).click();
+  await expect(page.locator('#note-text')).toHaveValue('The main assertion');
+  await page.locator('#note-text').fill('The revised assertion');
+  await page.getByRole('button', { name: 'Save note', exact: true }).click();
+  await expect(page.locator('.semantic-badge.note')).toContainText('The revised assertion');
   await page.reload();
   await page.getByRole('button', { name: 'Test analysis', exact: true }).click();
-  await expect(page.locator('.semantic-badge.note')).toContainText('The main assertion');
+  await expect(page.locator('.semantic-badge.note')).toContainText('The revised assertion');
   await page.getByRole('button', { name: 'Remove proposition note' }).click();
   await expect(page.locator('.semantic-badge.note')).toHaveCount(0);
 });

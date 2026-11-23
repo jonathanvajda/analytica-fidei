@@ -174,6 +174,13 @@ export function removeAnalysisNote(project, id) {
   return { ...project, notes: project.notes.filter(item => item.id !== id) };
 }
 
+/** Revise note text without changing its identity or anchor. */
+export function updateAnalysisNote(project, { id, text }) {
+  requireAnalysisCondition(typeof text === 'string' && text.trim(), 'Write a note before saving.');
+  requireAnalysisCondition((project.notes ?? []).some(item => item.id === id), 'Choose a known note.');
+  return { ...project, notes: project.notes.map(item => item.id === id ? { ...item, text: text.trim() } : item) };
+}
+
 /** Identify a reusable, source-anchored constituent without assigning its tokens again.
  * A constituent can subsequently realize a role explicitly in one proposition and
  * implicitly (elliptically) in any number of others.
@@ -298,6 +305,14 @@ export function addAnalysisRelation(project, { id, from, to, label, type }) {
   requireAnalysisCondition(typeof resolvedLabel === 'string' && resolvedLabel.trim(), 'Describe the directed relation.');
   return { ...project, relations: [...project.relations,
     { id, from, to, label: resolvedLabel.trim(), ...(relationType ? { type: relationType.id } : {}) }] };
+}
+
+/** Revise a directed semantic edge while retaining its stable identity. */
+export function updateAnalysisRelation(project, { id, from, to, label, type }) {
+  requireAnalysisCondition(project.relations.some(item => item.id === id), 'Choose a known discourse relationship.');
+  const withoutExisting = { ...project, relations: project.relations.filter(item => item.id !== id) };
+  const revised = addAnalysisRelation(withoutExisting, { id, from, to, label, type }).relations.at(-1);
+  return { ...project, relations: project.relations.map(item => item.id === id ? revised : item) };
 }
 
 /** Remove a proposition and its dependent groups/relations, returning its words to staging.
