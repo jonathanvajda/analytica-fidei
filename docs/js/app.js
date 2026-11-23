@@ -1,6 +1,6 @@
 import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, addAnalysisProposition,
   removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
-  DISCOURSE_RELATION_TYPES } from './core/project.js';
+  DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -42,7 +42,7 @@ function showProjectDrawer(show) {
 }
 
 function closeEditors() {
-  for (const selector of ['#group-form', '#relation-form', '#word-inspector']) $(selector).hidden = true;
+  for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#word-inspector']) $(selector).hidden = true;
   $('#context-drawer').hidden = true;
   $('#toggle-inspector').setAttribute('aria-expanded', 'false');
   $('#inspector-empty').hidden = false;
@@ -120,6 +120,10 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
     await persistProject({ ...project, groups: project.groups.filter(item => item.id !== id) });
     report('Group removed. Propositions and relationships were retained.');
   }),
+  onRemovePropositionAnchor: (propositionId, tokenId) => runUiOperation(async () => {
+    await persistProject(removeAnalysisPropositionAnchor(project, { propositionId, tokenId }));
+    report('Connective anchor removed. The source word and discourse relationships were retained.');
+  }),
   onFocusRelation: id => { focusedRelationId = focusedRelationId === id ? null : id; renderCanvas(); },
 });
 
@@ -149,6 +153,7 @@ function updateCanvasActions() {
   $('#add-proposition').disabled = !selectedTokens.size;
   $('#open-group').disabled = selectedPropositions.size < 2;
   $('#open-relation').disabled = selectedPropositions.size !== 2;
+  $('#open-anchor').disabled = selectedPropositions.size !== 1 || selectedTokens.size !== 1;
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
   const unit = activeUnit();
   $('#assignment-summary').textContent = `${project.propositions.flatMap(item => item.tokenIds).length}/${unit.tokens.length} words assigned · ${project.propositions.length} propositions · ${project.relations.length} relationships`;
@@ -168,7 +173,7 @@ function selectCanvasWord(id, extend) {
   }
   // Keep the word DOM stable so double-clicks, focus and touch targets remain intact.
   canvas.updateSelection(selectedTokens); updateCanvasActions(); canvas.focusWord(id);
-  if (!$('#context-drawer').hidden && $('#group-form').hidden && $('#relation-form').hidden) inspectCanvasWord(id);
+  if (!$('#context-drawer').hidden && $('#group-form').hidden && $('#relation-form').hidden && $('#anchor-form').hidden) inspectCanvasWord(id);
 }
 
 function inspectCanvasWord(id) {
@@ -186,7 +191,7 @@ function inspectCanvasWord(id) {
 
 function openCanvasEditor(selector) {
   closeEditors(); showInspector(); $('#inspector-empty').hidden = true; $(selector).hidden = false;
-  $(selector).querySelector('input')?.focus();
+  $(selector).querySelector('input,select')?.focus();
 }
 
 $('#toggle-projects').addEventListener('click', () => showProjectDrawer($('#project-drawer').hidden));
@@ -236,6 +241,26 @@ $('#relation-form').addEventListener('submit', event => {
     const next = addAnalysisRelation(project, { id, from: $('#relation-from').value, to: $('#relation-to').value, type: $('#relation-type').value });
     focusedRelationId = id; $('#relation-type').value = ''; closeEditors();
     await persistProject(next); report('Directed relationship added beside its proposition.');
+  });
+});
+$('#open-anchor').addEventListener('click', () => {
+  const propositionId = [...selectedPropositions][0];
+  const tokenId = [...selectedTokens][0];
+  const token = activeUnit().tokens.find(item => item.id === tokenId);
+  const number = project.propositions.findIndex(item => item.id === propositionId) + 1;
+  $('#anchor-selection').textContent = `${token.text} → P${number}`;
+  openCanvasEditor('#anchor-form');
+});
+$('#anchor-form').addEventListener('submit', event => {
+  event.preventDefault();
+  runUiOperation(async () => {
+    const propositionId = [...selectedPropositions][0];
+    const tokenId = [...selectedTokens][0];
+    const next = addAnalysisPropositionAnchor(project,
+      { propositionId, tokenId, function: $('#anchor-function').value });
+    selectedTokens.clear(); selectedPropositions.clear(); $('#anchor-function').value = ''; closeEditors();
+    await persistProject(next);
+    report('Connective cue anchored to the proposition without asserting a discourse relationship.');
   });
 });
 $('#remove-relation').addEventListener('click', () => runUiOperation(async () => {

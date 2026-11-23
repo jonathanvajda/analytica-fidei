@@ -1,7 +1,7 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup,
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
   addAnalysisConstituent, attachAnalysisConstituent, addAnalysisPropositionAnchor,
-  addAnalysisTokenToProposition } from '../docs/js/core/project.js';
+  addAnalysisTokenToProposition, removeAnalysisPropositionAnchor } from '../docs/js/core/project.js';
 import { createPracticePassage } from '../docs/js/core/practice-passages.js';
 import { segmentLinguisticWords } from '../docs/js/vendor/linguistic-adapters/index.js';
 
@@ -129,6 +129,8 @@ test('connective anchors overlap source coverage without becoming duplicate prop
   expect(project.propositions[1].tokenIds).toHaveLength(2);
   expect(() => addAnalysisPropositionAnchor(project,
     { propositionId: 'p1', tokenId: connective })).toThrow(/already anchors/);
+  project = removeAnalysisPropositionAnchor(project, { propositionId: 'p1', tokenId: connective });
+  expect(project.propositions[1].anchors).toEqual([]);
 });
 
 test('reusable roles and connective anchors round-trip with older v1 projects remaining valid', () => {

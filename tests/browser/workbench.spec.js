@@ -130,6 +130,22 @@ test('canvas fills the viewport and can grow into horizontally scrollable space'
   await expect.poll(() => viewport.evaluate(element => element.scrollWidth)).toBe(after.scrollWidth);
 });
 
+test('a selected word can be authored and removed as a connective proposition anchor', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 3);
+  await page.locator('.canvas-word').nth(3).click();
+  await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
+  await page.getByRole('button', { name: 'Anchor connective', exact: true }).click();
+  await page.locator('#anchor-function').selectOption('contrast');
+  await page.getByRole('button', { name: 'Add connective anchor', exact: true }).click();
+  await expect(page.locator('#feedback')).toContainText('without asserting a discourse relationship');
+  await expect(page.locator('.semantic-badge.connective')).toContainText('contrast');
+  await expect(page.locator('#assignment-summary')).toContainText('0 relationships');
+  await page.getByRole('button', { name: /Remove connective anchor/ }).click();
+  await expect(page.locator('.semantic-badge.connective')).toHaveCount(0);
+  await expect(page.locator('#feedback')).toContainText('Connective anchor removed');
+});
+
 test('dragging an adjacent missed source word into a proposition assigns it', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 1, 4);

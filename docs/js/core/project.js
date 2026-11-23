@@ -191,6 +191,16 @@ export function addAnalysisPropositionAnchor(project, { propositionId, tokenId, 
     ? { ...item, anchors: [...anchors, anchor] } : item) };
 }
 
+/** Remove one proposition cue without changing its source token or discourse relations. */
+export function removeAnalysisPropositionAnchor(project, { propositionId, tokenId, kind = 'connective' }) {
+  const proposition = project.propositions.find(item => item.id === propositionId);
+  requireAnalysisCondition(proposition, 'Choose a known proposition.');
+  const anchors = proposition.anchors ?? [];
+  requireAnalysisCondition(anchors.some(item => item.tokenId === tokenId && item.kind === kind), 'Choose a known proposition anchor.');
+  return { ...project, propositions: project.propositions.map(item => item.id === propositionId
+    ? { ...item, anchors: anchors.filter(anchor => anchor.tokenId !== tokenId || anchor.kind !== kind) } : item) };
+}
+
 function groupBounds(project, group) {
   requireAnalysisCondition(Array.isArray(group.propositionIds), 'Provide an ordered proposition ID array.');
   const positions = group.propositionIds.map(id => project.propositions.findIndex(item => item.id === id));

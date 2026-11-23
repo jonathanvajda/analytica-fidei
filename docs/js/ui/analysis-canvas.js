@@ -23,7 +23,7 @@ function positionElement(element, left, top, width) {
  * @returns {{render:function(object):void,updateSelection:function(Set):void,setZoom:function(number):void,focusWord:function(string):void,getWidths:function():object}}
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
-  onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onFocusRelation }) {
+  onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onRemovePropositionAnchor, onFocusRelation }) {
   let model;
   let state;
   let zoom = 1;
@@ -87,8 +87,11 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
       });
       const anchors = (proposition.anchors ?? []).map(anchor => {
         const word = model.unit.tokens.find(token => token.id === anchor.tokenId)?.text ?? 'source cue';
-        return el('span', { className: 'semantic-badge connective',
-          text: `◇ ${word}${anchor.function ? ` · ${anchor.function}` : ''}`, title: 'Connective proposition anchor' });
+        const removeAnchor = el('button', { type: 'button', className: 'quiet', text: '×',
+          'aria-label': `Remove connective anchor ${word}` });
+        removeAnchor.addEventListener('click', () => onRemovePropositionAnchor(proposition.id, anchor.tokenId));
+        return el('span', { className: 'semantic-badge connective', title: 'Connective proposition anchor' },
+          [el('span', { text: `◇ ${word}${anchor.function ? ` · ${anchor.function}` : ''}` }), removeAnchor]);
       });
       heading.append(el('label', {}, [checkbox, el('span', { text: `P${number}` })]), ...roles, ...anchors, remove);
     } else heading.append(el('span', { className: 'source-heading', text: 'Source' }));

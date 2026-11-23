@@ -86,9 +86,10 @@ There is no silent storage fallback advertised as a successful persistent save.
    propositions. Subjects, predicates/verbs, objects, determiners, and other roles
    must use the same general mechanism. The model and canvas badges exist; creation,
    editing, removal, and browser-level tests remain.
-2. **Connective-anchor authoring (UR-82):** expose the existing proposition-anchor
-   model in the inspector, including a reviewable cue function that remains distinct
-   from the discourse relation it may signal.
+2. **Connective-anchor refinement (UR-82):** basic inspector authoring and removal
+   are implemented. Next, add language-aware cue suggestions, freeform/extended
+   functions, and relation-level or segment-level anchors without treating a cue as
+   proof of a discourse relation.
 3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
    vocabulary with formal definitions, inverse-direction guidance, migration rules,
    and RDF predicates. The first controlled selector and direction explanation are
@@ -115,7 +116,7 @@ Initial requirement coverage is partial: UR-01/04 (local projects), UR-08/09/10/
 (source staging and coverage), portions of UR-22/23/24/28/29/31/32/33/35/38/39/40
 (manual grammatical, proposition, relation, history, and canvas editing), UR-11/51
 (supplied annotations and explicit missing-data display), the reusable-constituent
-model for UR-81, the connective-anchor model for UR-82, and the contiguous/laminar
+model for UR-81, basic connective-anchor authoring for UR-82, and the contiguous/laminar
 constraints of UR-72–76. Model support without an authoring UI is not counted as a
 complete requirement.
 UR-05's RDF export and other full-spec acceptance gates are not complete.
