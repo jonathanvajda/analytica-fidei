@@ -513,3 +513,7 @@ await runUiOperation(async () => {
   });
   if (invalidCorpus || results.some(result => result.status === 'rejected')) $('#edition-status').textContent = 'Some library data could not be loaded. Available editions and practice tools can still be used.';
 });
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(() => {
+  // The workbench remains usable online and local-first storage still functions.
+});

@@ -131,6 +131,10 @@ annotation layers and export parity remain future work.
 UR-68 has independent, persistent Hebrew vowel-point and cantillation display
 filters. Filtering occurs only at measurement/render time over canonical token text;
 source strings, identities, selections, and analysis assertions are unchanged.
+UR-06 has an installable web-app manifest and a versioned service worker. Installation
+pre-caches the application module graph, edition registry, and complete bundled
+SBLGNT text; same-origin assets encountered later are refreshed online and retained
+for offline fallback. IndexedDB analysis persistence remains independent of the cache.
 UR-05's RDF export and other full-spec acceptance gates are not complete.
 
 ## Specification provenance

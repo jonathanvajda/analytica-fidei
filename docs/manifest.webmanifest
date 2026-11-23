@@ -1,0 +1,14 @@
+{
+  "name": "Analytica Fidei — Biblical Discourse Analysis",
+  "short_name": "Analytica Fidei",
+  "description": "A local-first biblical discourse analysis workbench.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fbfaf5",
+  "theme_color": "#173f37",
+  "icons": [
+    { "src": "./icons/analytica-fidei-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icons/analytica-fidei.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

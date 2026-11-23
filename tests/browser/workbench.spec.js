@@ -146,6 +146,23 @@ test('dark theme covers the workbench and persists across reload', async ({ page
   await expect(page.getByRole('button', { name: 'Light theme', exact: true })).toBeVisible();
 });
 
+test('installed workbench and bundled edition remain usable offline', async ({ page, context }) => {
+  await page.goto('./');
+  await page.evaluate(() => navigator.serviceWorker.ready.then(() => undefined));
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  await expect(page.locator('#edition-select')).toBeEnabled();
+  await context.setOffline(true);
+  try {
+    await page.reload();
+    await expect(page.locator('.brand-name')).toContainText('Analytica Fidei');
+    await expect(page.locator('#edition-select')).toBeEnabled();
+    await expect(page.locator('#book-select')).toHaveValue('Matt');
+    await page.getByRole('button', { name: 'Start discourse analysis', exact: true }).click();
+    await expect(page.locator('#passage-reference')).toContainText('Matthew 1:1');
+    await expect(page.locator('.canvas-word').first()).toBeVisible();
+  } finally { await context.setOffline(false); }
+});
+
 test('a selected word can be authored and removed as a connective proposition anchor', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 0, 3);
