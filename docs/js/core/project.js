@@ -6,7 +6,7 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{id:string, tokenIds:string[], label:string}} AnalysisConstituent */
 /** @typedef {{constituentId:string, role:string, realization:'explicit'|'implicit'}} AnalysisConstituentRole */
 /** @typedef {{tokenId:string, kind:'connective', function:string}} AnalysisAnchor */
-/** @typedef {{id:string,targetType:'token'|'proposition'|'relation',targetId:string,text:string}} AnalysisNote */
+/** @typedef {{id:string,targetType:'token'|'proposition'|'relation'|'constituent',targetId:string,text:string}} AnalysisNote */
 /** @typedef {{id:string, propositionIds:string[], label:string}} AnalysisGroup */
 /** @typedef {{id:string, from:string, to:string, label:string, type?:string, anchors?:AnalysisAnchor[]}} AnalysisRelation */
 /** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
@@ -164,11 +164,12 @@ function analysisEntityIds(project) {
 /** Add a user-authored note to one canonical analysis entity. */
 export function addAnalysisNote(project, { id, targetType, targetId, text }) {
   requireAnalysisCondition(typeof id === 'string' && id.trim() && !analysisEntityIds(project).includes(id), 'Note ID must be unique.');
-  requireAnalysisCondition(['token', 'proposition', 'relation'].includes(targetType), 'Choose a word, proposition, or relationship note target.');
+  requireAnalysisCondition(['token', 'proposition', 'relation', 'constituent'].includes(targetType), 'Choose a known analysis note target.');
   const known = targetType === 'token'
     ? adaptAnalysisPassage(project.passage).tokens.some(item => item.id === targetId)
     : targetType === 'proposition' ? project.propositions.some(item => item.id === targetId)
-      : project.relations.some(item => item.id === targetId);
+      : targetType === 'relation' ? project.relations.some(item => item.id === targetId)
+        : project.constituents.some(item => item.id === targetId);
   requireAnalysisCondition(known, 'Choose a known note target.');
   requireAnalysisCondition(typeof text === 'string' && text.trim(), 'Write a note before saving.');
   return { ...project, notes: [...(project.notes ?? []), { id, targetType, targetId, text: text.trim() }] };
@@ -218,7 +219,8 @@ export function removeAnalysisConstituent(project, id) {
   const used = project.propositions.some(proposition =>
     (proposition.constituentRoles ?? []).some(role => role.constituentId === id));
   requireAnalysisCondition(!used, 'Remove this constituent from every proposition role before deleting it.');
-  return { ...project, constituents: project.constituents.filter(item => item.id !== id) };
+  return { ...project, constituents: project.constituents.filter(item => item.id !== id),
+    notes: (project.notes ?? []).filter(item => item.targetType !== 'constituent' || item.targetId !== id) };
 }
 
 /** Reference one reusable constituent from a proposition role.

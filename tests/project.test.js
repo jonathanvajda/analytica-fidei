@@ -181,10 +181,12 @@ test('one source constituent can fill explicit and implicit proposition roles wi
   expect(project.constituents).toHaveLength(1);
   project = updateAnalysisConstituent(project, { id: 'people', label: 'the gathered people' });
   expect(project.constituents[0].label).toBe('the gathered people');
+  project = addAnalysisNote(project, { id: 'constituent-note', targetType: 'constituent', targetId: 'people', text: 'Plural understood subject' });
   expect(() => removeAnalysisConstituent(project, 'people')).toThrow(/every proposition role/);
   project = detachAnalysisConstituent(project, { propositionId: 'p0', constituentId: 'people', role: 'subject' });
   project = removeAnalysisConstituent(project, 'people');
   expect(project.constituents).toEqual([]);
+  expect(project.notes).toEqual([]);
 });
 
 test('connective anchors overlap source coverage without becoming duplicate proposition tokens', () => {

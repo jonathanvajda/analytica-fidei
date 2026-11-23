@@ -243,6 +243,8 @@ function renderConstituentLibrary() {
         report('Reusable constituent renamed everywhere it is used.');
       });
     });
+    const addNote = el('button', { type: 'button', text: 'Add note', 'aria-label': `Add note to constituent ${constituent.label || sourceText}` });
+    addNote.addEventListener('click', () => openNoteEditor(null, { targetType: 'constituent', targetId: constituent.id }));
     const remove = el('button', { type: 'button', text: 'Delete', className: 'quiet danger',
       'aria-label': `Delete constituent ${constituent.label || sourceText}`, ...(uses ? { disabled: '' } : {}) });
     if (uses) remove.title = `Used by ${uses} grammatical ${uses === 1 ? 'role' : 'roles'}; detach them first.`;
@@ -250,10 +252,21 @@ function renderConstituentLibrary() {
       await persistProject(removeAnalysisConstituent(project, constituent.id));
       report('Unused reusable constituent deleted.');
     }));
+    const notes = (project.notes ?? []).filter(note => note.targetType === 'constituent' && note.targetId === constituent.id)
+      .map(note => {
+        const edit = el('button', { type: 'button', className: 'quiet', text: 'Edit', 'aria-label': 'Edit constituent note' });
+        edit.addEventListener('click', () => openNoteEditor(note.id));
+        const removeNote = el('button', { type: 'button', className: 'quiet danger', text: '×', 'aria-label': 'Remove constituent note' });
+        removeNote.addEventListener('click', () => runUiOperation(async () => {
+          await persistProject(removeAnalysisNote(project, note.id)); report('Analysis note removed.');
+        }));
+        return el('span', { className: 'semantic-badge note', title: note.text }, [el('span', { text: note.text }), edit, removeNote]);
+      });
     return el('div', { className: 'constituent-item' }, [
       el('p', { text: constituent.label || sourceText }),
       el('p', { className: 'small subtle', text: `${sourceText} · ${uses} ${uses === 1 ? 'use' : 'uses'}` }),
-      el('div', { className: 'toolbar' }, [rename, remove]),
+      el('div', { className: 'toolbar' }, [addNote, rename, remove]),
+      ...(notes.length ? [el('div', { className: 'constituent-notes' }, notes)] : []),
     ]);
   }));
 }
@@ -499,12 +512,17 @@ function openNoteEditor(id = null, target = null) {
     } else if (note.targetType === 'proposition') {
       const number = project.propositions.findIndex(item => item.id === note.targetId) + 1;
       $('#note-target').textContent = `Proposition P${number}`;
-    } else $('#note-target').textContent = `Relationship: ${project.relations.find(item => item.id === note.targetId)?.label}`;
+    } else if (note.targetType === 'relation') {
+      $('#note-target').textContent = `Relationship: ${project.relations.find(item => item.id === note.targetId)?.label}`;
+    } else $('#note-target').textContent = `Reusable constituent: ${project.constituents.find(item => item.id === note.targetId)?.label || 'unnamed constituent'}`;
     openCanvasEditor('#note-form');
     return;
   }
   if (target?.targetType === 'relation') {
     $('#note-target').textContent = `Relationship: ${project.relations.find(item => item.id === target.targetId)?.label}`;
+  } else if (target?.targetType === 'constituent') {
+    const constituent = project.constituents.find(item => item.id === target.targetId);
+    $('#note-target').textContent = `Reusable constituent: ${constituent.label || 'unnamed constituent'}`;
   } else if (selectedTokens.size === 1) {
     const token = activeUnit().tokens.find(item => item.id === [...selectedTokens][0]);
     $('#note-target').textContent = `Word: ${token.text}`;

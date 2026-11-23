@@ -99,9 +99,9 @@ There is no silent storage fallback advertised as a successful persistent save.
 4. **Grammatical-note refinement (UR-30):** basic word-anchored and
    proposition-anchored notes are implemented through the validated command/history
    path. Stable-ID text editing is implemented for both targets. Next, add
-   constituent targets, optional note categories, and provenance when automated or
-   imported annotations are introduced. Relationship-targeted notes are implemented
-   with stable-ID editing and lifecycle cleanup.
+   optional note categories and provenance when automated or imported annotations
+   are introduced. Constituent- and relationship-targeted notes are implemented with
+   stable-ID editing and lifecycle cleanup.
 
 1. Identify the actual SBLGNT input files and release/license manifests. Build corpus
    loaders and a coverage-aware edition registry using the shared Greek and OSHB
