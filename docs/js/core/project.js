@@ -8,7 +8,7 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{tokenId:string, kind:'connective', function:string}} AnalysisAnchor */
 /** @typedef {{id:string,targetType:'token'|'proposition',targetId:string,text:string}} AnalysisNote */
 /** @typedef {{id:string, propositionIds:string[], label:string}} AnalysisGroup */
-/** @typedef {{id:string, from:string, to:string, label:string, type?:string}} AnalysisRelation */
+/** @typedef {{id:string, from:string, to:string, label:string, type?:string, anchors?:AnalysisAnchor[]}} AnalysisRelation */
 /** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
 export function requireAnalysisCondition(condition, message) {
   if (!condition) throw new Error(message);
@@ -70,7 +70,11 @@ export function restoreAnalysisProject(value) {
       { propositionId: proposition.id, ...anchor });
   }
   for (const group of value.groups) project = addAnalysisGroup(project, group);
-  for (const relation of value.relations) project = addAnalysisRelation(project, relation);
+  for (const relation of value.relations) {
+    project = addAnalysisRelation(project, relation);
+    for (const anchor of relation.anchors ?? []) project = addAnalysisRelationAnchor(project,
+      { relationId: relation.id, ...anchor });
+  }
   for (const note of value.notes ?? []) project = addAnalysisNote(project, note);
   // Old v1 backups have no layout. Keep their semantic content and derive initial placement.
   if (value.layout === undefined) return project;
@@ -326,10 +330,35 @@ export function addAnalysisRelation(project, { id, from, to, label, type }) {
 
 /** Revise a directed semantic edge while retaining its stable identity. */
 export function updateAnalysisRelation(project, { id, from, to, label, type }) {
-  requireAnalysisCondition(project.relations.some(item => item.id === id), 'Choose a known discourse relationship.');
+  const existing = project.relations.find(item => item.id === id);
+  requireAnalysisCondition(existing, 'Choose a known discourse relationship.');
   const withoutExisting = { ...project, relations: project.relations.filter(item => item.id !== id) };
-  const revised = addAnalysisRelation(withoutExisting, { id, from, to, label, type }).relations.at(-1);
+  const revised = { ...addAnalysisRelation(withoutExisting, { id, from, to, label, type }).relations.at(-1),
+    ...(existing.anchors?.length ? { anchors: existing.anchors } : {}) };
   return { ...project, relations: project.relations.map(item => item.id === id ? revised : item) };
+}
+
+/** Anchor a source cue to a discourse edge without changing its semantic type. */
+export function addAnalysisRelationAnchor(project, { relationId, tokenId, kind = 'connective', function: anchorFunction = '' }) {
+  requireAnalysisCondition(kind === 'connective', 'Only connective anchors are currently supported.');
+  requireAnalysisCondition(typeof anchorFunction === 'string', 'Anchor function must be text.');
+  requireAnalysisCondition(adaptAnalysisPassage(project.passage).tokens.some(item => item.id === tokenId), 'Choose a source token as the anchor.');
+  const relation = project.relations.find(item => item.id === relationId);
+  requireAnalysisCondition(relation, 'Choose a known discourse relationship.');
+  const anchors = relation.anchors ?? [];
+  requireAnalysisCondition(!anchors.some(item => item.tokenId === tokenId && item.kind === kind), 'That connective already anchors this relationship.');
+  const anchor = { tokenId, kind, function: anchorFunction.trim() };
+  return { ...project, relations: project.relations.map(item => item.id === relationId
+    ? { ...item, anchors: [...anchors, anchor] } : item) };
+}
+
+export function removeAnalysisRelationAnchor(project, { relationId, tokenId, kind = 'connective' }) {
+  const relation = project.relations.find(item => item.id === relationId);
+  requireAnalysisCondition(relation, 'Choose a known discourse relationship.');
+  requireAnalysisCondition((relation.anchors ?? []).some(item => item.tokenId === tokenId && item.kind === kind),
+    'Choose a known relationship anchor.');
+  return { ...project, relations: project.relations.map(item => item.id === relationId
+    ? { ...item, anchors: item.anchors.filter(anchor => anchor.tokenId !== tokenId || anchor.kind !== kind) } : item) };
 }
 
 /** Remove a proposition and its dependent groups/relations, returning its words to staging.

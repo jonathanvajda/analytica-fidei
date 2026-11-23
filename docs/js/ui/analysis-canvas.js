@@ -26,7 +26,7 @@ function positionElement(element, left, top, width) {
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
   onMoveWord, onToggleProposition, onRemoveProposition, onRemoveGroup, onRemovePropositionAnchor,
-  onDetachConstituent, onEditNote, onRemoveNote, onFocusRelation }) {
+  onDetachConstituent, onEditNote, onRemoveNote, onFocusRelation, onRemoveRelationAnchor }) {
   let model;
   let state;
   let zoom = 1;
@@ -157,7 +157,16 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
         const button = el('button', { className: 'relation-chip', text: `${relation.label} → ${number(relation.to)}`,
           'aria-label': `${number(relation.from)} → ${number(relation.to)} · ${relation.label}`, 'aria-pressed': state.focusedRelationId === relation.id });
         button.addEventListener('click', () => onFocusRelation(relation.id));
-        return button;
+        const anchors = (relation.anchors ?? []).map(anchor => {
+          const word = model.unit.tokens.find(token => token.id === anchor.tokenId)?.text ?? 'source cue';
+          const remove = el('button', { type: 'button', className: 'quiet', text: '×',
+            'aria-label': `Remove relationship connective anchor ${word}` });
+          remove.addEventListener('click', () => onRemoveRelationAnchor(relation.id, anchor.tokenId));
+          return el('span', { className: 'semantic-badge connective relation-anchor' }, [
+            el('span', { text: `◇ ${word}${anchor.function ? ` · ${anchor.function}` : ''}` }), remove,
+          ]);
+        });
+        return el('span', { className: 'relation-item' }, [button, ...anchors]);
       })), model.gutter, block.headingY + 24));
     const relation = state.project.relations.find(item => item.id === state.focusedRelationId);
     if (!relation) return chips;

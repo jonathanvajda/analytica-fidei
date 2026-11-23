@@ -2,6 +2,7 @@ import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, ad
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, addAnalysisPropositionAnchor,
+  addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
   addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
   updateAnalysisRelation } from '../docs/js/core/project.js';
@@ -180,6 +181,20 @@ test('connective anchors overlap source coverage without becoming duplicate prop
     { propositionId: 'p1', tokenId: connective })).toThrow(/already anchors/);
   project = removeAnalysisPropositionAnchor(project, { propositionId: 'p1', tokenId: connective });
   expect(project.propositions[1].anchors).toEqual([]);
+});
+
+test('a source cue can anchor a relationship without changing its semantic type or token coverage', () => {
+  let project = addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'reason' });
+  const tokenId = project.propositions[1].tokenIds[0];
+  const coverage = project.propositions.flatMap(item => item.tokenIds);
+  project = addAnalysisRelationAnchor(project, { relationId: 'r', tokenId, function: 'cause' });
+  expect(project.relations[0]).toMatchObject({ type: 'reason', anchors: [{ tokenId, kind: 'connective', function: 'cause' }] });
+  expect(project.propositions.flatMap(item => item.tokenIds)).toEqual(coverage);
+  project = updateAnalysisRelation(project, { id: 'r', from: 'p1', to: 'p0', type: 'evidence' });
+  expect(project.relations[0].anchors).toHaveLength(1);
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
+  project = removeAnalysisRelationAnchor(project, { relationId: 'r', tokenId });
+  expect(project.relations[0].anchors).toEqual([]);
 });
 
 test('reusable roles and connective anchors round-trip with older v1 projects remaining valid', () => {

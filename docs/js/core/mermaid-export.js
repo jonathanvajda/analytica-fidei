@@ -28,6 +28,13 @@ export function createAnalysisMermaid(project) {
     }
   }
   writeNodes(buildAnalysisOutline(project));
-  for (const relation of project.relations) lines.push(`  ${aliases.get(relation.from)} -->|"${escapeLabel(relation.label)}"| ${aliases.get(relation.to)}`);
+  for (const relation of project.relations) {
+    const cues = (relation.anchors ?? []).map(anchor => {
+      const word = tokens.get(anchor.tokenId) ?? 'source cue';
+      return `${word}${anchor.function ? ` (${anchor.function})` : ''}`;
+    });
+    const label = `${relation.label}${cues.length ? ` · cue: ${cues.join(', ')}` : ''}`;
+    lines.push(`  ${aliases.get(relation.from)} -->|"${escapeLabel(label)}"| ${aliases.get(relation.to)}`);
+  }
   return `${lines.join('\n')}\n`;
 }

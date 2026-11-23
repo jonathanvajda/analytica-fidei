@@ -88,9 +88,10 @@ There is no silent storage fallback advertised as a successful persistent save.
    reference it. Next, add role-specific validation, multiword phrase structure,
    and dependency targets.
 2. **Connective-anchor refinement (UR-82):** basic inspector authoring and removal
-   are implemented. Next, add language-aware cue suggestions, freeform/extended
-   functions, and relation-level or segment-level anchors without treating a cue as
-   proof of a discourse relation.
+   are implemented for propositions and focused discourse relationships. Both are
+   non-exclusive source-token cues and do not determine the relationship type. Next,
+   add language-aware cue suggestions, freeform/extended functions, and segment-level
+   anchors.
 3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
    vocabulary with inverse-direction guidance, migration rules, and RDF predicates.
    The controlled selector, accessible vocabulary definitions, direction explanation,

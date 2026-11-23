@@ -1,6 +1,7 @@
 import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, addAnalysisProposition,
   removeAnalysisProposition, addAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
   DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
+  addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
@@ -178,6 +179,10 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
   onRemoveNote: id => runUiOperation(async () => {
     await persistProject(removeAnalysisNote(project, id)); report('Analysis note removed.');
   }),
+  onRemoveRelationAnchor: (relationId, tokenId) => runUiOperation(async () => {
+    await persistProject(removeAnalysisRelationAnchor(project, { relationId, tokenId }));
+    report('Relationship connective anchor removed. The source word and relationship were retained.');
+  }),
   onFocusRelation: id => { focusedRelationId = focusedRelationId === id ? null : id; renderCanvas(); },
 });
 
@@ -258,7 +263,7 @@ function updateCanvasActions() {
   $('#return-source').disabled = !selectedTokens.size || selectedOwners.size !== 1 || selectedOwners.has(undefined);
   $('#open-group').disabled = selectedPropositions.size < 2;
   $('#open-relation').disabled = selectedPropositions.size !== 2;
-  $('#open-anchor').disabled = selectedPropositions.size !== 1 || selectedTokens.size !== 1;
+  $('#open-anchor').disabled = selectedTokens.size !== 1 || (selectedPropositions.size !== 1 && !focusedRelationId);
   $('#open-role').disabled = selectedPropositions.size !== 1 || (!selectedTokens.size && !project.constituents.length);
   $('#open-note').disabled = !((selectedTokens.size === 1 && selectedPropositions.size === 0) ||
     (selectedTokens.size === 0 && selectedPropositions.size === 1));
@@ -390,23 +395,32 @@ $('#relation-form').addEventListener('submit', event => {
   });
 });
 $('#open-anchor').addEventListener('click', () => {
-  const propositionId = [...selectedPropositions][0];
   const tokenId = [...selectedTokens][0];
   const token = activeUnit().tokens.find(item => item.id === tokenId);
-  const number = project.propositions.findIndex(item => item.id === propositionId) + 1;
-  $('#anchor-selection').textContent = `${token.text} → P${number}`;
+  if (selectedPropositions.size === 1) {
+    const propositionId = [...selectedPropositions][0];
+    const number = project.propositions.findIndex(item => item.id === propositionId) + 1;
+    $('#anchor-selection').textContent = `${token.text} → proposition P${number}`;
+  } else {
+    const relation = project.relations.find(item => item.id === focusedRelationId);
+    $('#anchor-selection').textContent = `${token.text} → ${relation.label} relationship`;
+  }
   openCanvasEditor('#anchor-form');
 });
 $('#anchor-form').addEventListener('submit', event => {
   event.preventDefault();
   runUiOperation(async () => {
-    const propositionId = [...selectedPropositions][0];
     const tokenId = [...selectedTokens][0];
-    const next = addAnalysisPropositionAnchor(project,
-      { propositionId, tokenId, function: $('#anchor-function').value });
+    const relationTarget = selectedPropositions.size !== 1 && focusedRelationId;
+    const next = relationTarget
+      ? addAnalysisRelationAnchor(project, { relationId: focusedRelationId, tokenId, function: $('#anchor-function').value })
+      : addAnalysisPropositionAnchor(project,
+        { propositionId: [...selectedPropositions][0], tokenId, function: $('#anchor-function').value });
     selectedTokens.clear(); selectedPropositions.clear(); $('#anchor-function').value = ''; closeEditors();
     await persistProject(next);
-    report('Connective cue anchored to the proposition without asserting a discourse relationship.');
+    report(relationTarget
+      ? 'Connective cue anchored to the relationship without changing its semantic type.'
+      : 'Connective cue anchored to the proposition without asserting a discourse relationship.');
   });
 });
 
