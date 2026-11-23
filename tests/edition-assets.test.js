@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { parseSblgntBookText, describeEditionBook } from '../docs/js/core/editions.js';
+import { parseSblgntBookText, describeEditionBook, canonicalizeEditionTextBytes } from '../docs/js/core/editions.js';
 
-const hash = content => createHash('sha256').update(content).digest('hex');
+const hash = content => createHash('sha256').update(canonicalizeEditionTextBytes(content)).digest('hex');
 
 test('all bundled SBLGNT books match their pinned hashes, coverage and deterministic token offsets', async () => {
   const base = new URL('../docs/data/', import.meta.url);

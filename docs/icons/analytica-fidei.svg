@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title description">
+  <title id="title">Analytica Fidei</title>
+  <desc id="description">A classical letter A within an open arch, crossed by a gold line with two points.</desc>
+  <rect width="512" height="512" rx="88" fill="#173f37"/>
+  <path d="M66 446V186C66 104 151 39 256 39s190 65 190 147v260"
+        fill="none" stroke="#fffaf0" stroke-width="17" stroke-linecap="square"/>
+  <path d="M67 447h378" fill="none" stroke="#fffaf0" stroke-width="17"/>
+  <text x="256" y="373" fill="#fffaf0" text-anchor="middle"
+        font-family="Georgia, 'Times New Roman', serif" font-size="306" font-weight="700">A</text>
+  <path d="M148 287h216" stroke="#c49a52" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="128" cy="287" r="10" fill="#c49a52"/>
+  <circle cx="384" cy="287" r="10" fill="#c49a52"/>
+</svg>

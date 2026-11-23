@@ -9553,7 +9553,7 @@
     "script": "scripts/build-sblgnt.mjs",
     "scriptSha256": "c2c62b6843977d8e1832adfc958425beda87dce0b5d474805f7c70f98ca12b65",
     "parser": "docs/js/core/editions.js",
-    "parserSha256": "b91c035be39f55f4f2fd5ebe5b7dda8ac9eefbe2f8b47c9d32452816e66fe36f",
+    "parserSha256": "f95fa79ed8fa98429a98c9deb200920ad2bcaae8a01040330536b5420384eff2",
     "licenseSha256": "7e7170e3cebf88a9f60c7b8421418323c09304da1af4d5e90f4da1dc1c8a2661"
   }
 }

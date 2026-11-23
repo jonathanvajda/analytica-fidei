@@ -125,7 +125,7 @@ function renderProject() {
   $('#welcome').hidden = Boolean(project);
   $('#workbench').hidden = !project;
   $('#project-actions').hidden = !project;
-  if (!project) { $('#active-project-name').textContent = 'Analysis canvas'; $('#source-description').textContent = ''; return; }
+  if (!project) { $('#active-project-name').textContent = 'Discourse analysis canvas'; $('#source-description').textContent = ''; return; }
   const unit = activeUnit();
   $('#active-project-name').textContent = project.name;
   $('#source-description').textContent = `${project.passage.editionTitle ?? unit.source.sourceId} · ${unit.source.language}`;

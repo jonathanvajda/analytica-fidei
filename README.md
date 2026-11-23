@@ -1,6 +1,6 @@
-# Discourse analysis
+# Analytica Fidei — Biblical Discourse Analysis
 
-An initial local-first workbench for the [Biblical Discourse Analysis specification](specs/DA-Spec_001.md).
+An initial local-first workbench for the [Biblical Discourse Analysis specification](specs/DA-Spec_001.md). The name plays on the *analogia fidei* of Romans 12:6: biblical interpretation according to the proportion of faith, with Scripture interpreting Scripture.
 The app is buildless: GitHub Pages serves `docs/` directly. Specifications live in
 `specs/`, outside the published site; JavaScript and CSS live under `docs/js/` and
 `docs/css/`.

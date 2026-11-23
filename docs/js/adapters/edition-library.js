@@ -1,4 +1,5 @@
-import { normalizeEditionDescriptor, normalizeEditionCorpus, describeEditionBook, parseSblgntBookText } from '../core/editions.js';
+import { normalizeEditionDescriptor, normalizeEditionCorpus, describeEditionBook, parseSblgntBookText,
+  canonicalizeEditionTextBytes } from '../core/editions.js';
 
 export const getEditionKey = edition => `${edition.id}@${edition.source.version}`;
 
@@ -39,7 +40,7 @@ export function createEditionLibrary({ catalog = [], corpora = [], fetchRef = gl
     if (url.origin !== allowed.origin || !url.pathname.startsWith(allowed.pathname)) throw new Error('Book assets must stay inside the local edition directory.');
     const response = await fetchRef(url);
     if (!response.ok) throw new Error(`Could not load ${descriptor.name}. Open the drawer and try again.`);
-    const bytes = await response.arrayBuffer();
+    const bytes = canonicalizeEditionTextBytes(await response.arrayBuffer());
     if (await digest(bytes) !== descriptor.sha256) throw new Error('Book integrity check failed. Reload the application before retrying.');
     if (edition.format !== 'sblgnt-tab-text') throw new Error('Unsupported bundled book format.');
     const book = parseSblgntBookText(new TextDecoder('utf-8', { fatal: true }).decode(bytes), descriptor);

@@ -3,6 +3,21 @@ import { adaptProfiledUnit } from './linguistic-profiles.js';
 
 const PROFILES = new Set(['records', 'sblgnt-records', 'oshb-words']);
 
+/** Canonical UTF-8 bytes for checksumming versioned text assets.
+ * Git may materialize LF files as CRLF on Windows; line-ending representation is
+ * not a textual edition change and must not cause a false corruption warning.
+ * Invalid UTF-8 still fails before parsing.
+ * @param {ArrayBuffer|ArrayBufferView} input Raw text asset bytes.
+ * @returns {Uint8Array} UTF-8 with LF line endings.
+ */
+export function canonicalizeEditionTextBytes(input) {
+  const bytes = ArrayBuffer.isView(input)
+    ? new Uint8Array(input.buffer, input.byteOffset, input.byteLength)
+    : new Uint8Array(input);
+  const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes).replace(/\r\n?/g, '\n');
+  return new TextEncoder().encode(text);
+}
+
 /** Validate identity and rights metadata without interpreting license terms.
  * @param {object} value Edition descriptor from a registry or imported corpus.
  * @returns {object} Detached, portable descriptor.

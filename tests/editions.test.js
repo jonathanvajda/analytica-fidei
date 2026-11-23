@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { parseSblgntBookText, normalizeEditionCorpus, normalizeEditionDescriptor, describeEditionBook, selectEditionPassage } from '../docs/js/core/editions.js';
+import { parseSblgntBookText, normalizeEditionCorpus, normalizeEditionDescriptor, describeEditionBook, selectEditionPassage,
+  canonicalizeEditionTextBytes } from '../docs/js/core/editions.js';
 import { adaptAnalysisPassage, createAnalysisProject, addAnalysisProposition, restoreAnalysisProject } from '../docs/js/core/project.js';
 import { createEditionLibrary, getEditionKey, loadBundledEditionCatalog } from '../docs/js/adapters/edition-library.js';
 
@@ -91,6 +92,15 @@ test('book loader is lazy, checks hashes, caches successes, detaches records and
   loaded.verses[0].text = 'changed';
   expect((await library.loadBook(getEditionKey(edition), 'John')).verses[0].text).not.toBe('changed');
   expect(calls).toBe(2);
+});
+
+test('book integrity treats Windows and Unix line endings as the same versioned text', async () => {
+  const lfBytes = new TextEncoder().encode(text);
+  const crlfBytes = new TextEncoder().encode(text.replace(/\n/g, '\r\n'));
+  const edition = { ...descriptor(), bundled: true, registryUrl: 'https://example.test/app/data/editions.json', format: 'sblgnt-tab-text',
+    books: [{ id: 'John', name: 'John', path: './editions/test/John.txt', sha256: await digest(canonicalizeEditionTextBytes(lfBytes)) }] };
+  const library = createEditionLibrary({ catalog: [edition], digest, fetchRef: async () => new Response(crlfBytes) });
+  await expect(library.loadBook(getEditionKey(edition), 'John')).resolves.toMatchObject({ id: 'John' });
 });
 
 test('corrupt assets and paths outside the local edition directory are rejected', async () => {
