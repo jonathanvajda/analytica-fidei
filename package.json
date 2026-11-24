@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "start": "node scripts/serve.mjs",
+    "vendor:manifest": "node scripts/vendor-manifest.mjs",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand",
     "test:browser": "playwright test"
   },

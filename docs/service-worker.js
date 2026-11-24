@@ -1,4 +1,4 @@
-const CACHE_NAME = 'analytica-fidei-v8';
+const CACHE_NAME = 'analytica-fidei-v9';
 const SHELL_ASSETS = [
   './', './index.html', './guide.html', './manifest.webmanifest',
   './css/typography.css', './css/workbench.css',
@@ -6,6 +6,7 @@ const SHELL_ASSETS = [
   './js/app.js', './js/core/project.js', './js/core/presentation.js', './js/core/canvas-layout.js', './js/core/mermaid-export.js',
   './js/core/grammatical-landmarks.js',
   './js/core/connective-suggestions.js',
+  './js/core/parsed-analysis-proposals.js',
   './js/core/practice-passages.js', './js/core/linguistic-profiles.js', './js/core/editions.js',
   './js/adapters/project-storage.js', './js/adapters/edition-library.js',
   './js/ui/dom.js', './js/ui/analysis-canvas.js', './js/ui/edition-browser.js',

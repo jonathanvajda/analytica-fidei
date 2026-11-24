@@ -1,5 +1,6 @@
 import { adaptProfiledPassage } from './linguistic-profiles.js';
 import { normalizeAnalysisPresentation } from './presentation.js';
+import { adaptParsedAnalysisDataset, restoreParsedAnalysisProposals } from './parsed-analysis-proposals.js';
 
 /** @file Pure analysis commands. IDs are supplied by the caller; no clock, DOM or storage. */
 /** @typedef {{id:string, tokenIds:string[], constituentRoles?:AnalysisConstituentRole[], anchors?:AnalysisAnchor[]}} AnalysisProposition */
@@ -54,7 +55,7 @@ export function createAnalysisProject({ id, name, passage }) {
   requireAnalysisCondition(typeof name === 'string' && name.trim(), 'Give the project a name.');
   adaptAnalysisPassage(passage);
   return { schemaVersion: 1, id, name: name.trim(), passage: structuredClone(passage),
-    propositions: [], constituents: [], dependencies: [], groups: [], relations: [], notes: [], proposalReviews: [] };
+    propositions: [], constituents: [], dependencies: [], groups: [], relations: [], notes: [], proposalReviews: [], analysisProposals: [] };
 }
 
 /** Restore through the same commands used for editing; reject invalid imports atomically.
@@ -88,10 +89,18 @@ export function restoreAnalysisProject(value) {
   }
   for (const note of value.notes ?? []) project = addAnalysisNote(project, note);
   for (const review of value.proposalReviews ?? []) project = rejectAnalysisProposal(project, review);
+  project = { ...project, analysisProposals: restoreParsedAnalysisProposals(adaptAnalysisPassage(project.passage), value.analysisProposals ?? []) };
   // Old v1 backups have no layout. Keep their semantic content and derive initial placement.
   if (value.layout === undefined) return project;
   const tokenIds = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
   return { ...project, layout: normalizeAnalysisPresentation(value.layout, tokenIds) };
+}
+
+/** Import external parse assertions as reviewable drafts; accepted analysis is unchanged. */
+export function importParsedAnalysisDataset(project, dataset) {
+  const proposals = adaptParsedAnalysisDataset(adaptAnalysisPassage(project.passage), dataset,
+    (project.analysisProposals ?? []).map(item => item.id));
+  return { ...project, analysisProposals: [...(project.analysisProposals ?? []), ...proposals] };
 }
 
 /** Persist rejection of a versioned automatic proposal without altering source or accepted analysis. */

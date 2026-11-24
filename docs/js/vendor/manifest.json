@@ -39,12 +39,12 @@
     {
       "path": "docs/js/vendor/indexeddb/indexeddb-adapter.js",
       "sourcePath": "packages/indexeddb-data-management/src/indexeddb-adapter.js",
-      "sha256": "4cd98e215470af353402d32fef14822e5f3dcc20295547e7f624e76c2e052879"
+      "sha256": "005f8b554ce29baa6a590e7f31b38ad492a9bfc5422bfac8f79602d3a5f9b030"
     },
     {
       "path": "docs/js/vendor/indexeddb/storage-error.js",
       "sourcePath": "packages/indexeddb-data-management/src/storage-error.js",
-      "sha256": "13ab5efea59db5712d8c9be69b155cca414df36ee4b7a2eaa1a6f3b3c8d347ba"
+      "sha256": "4e3c85191342390b2af5879b1e3415caa6a0a9633e1fb0869df22de2df277a11"
     }
   ]
 }

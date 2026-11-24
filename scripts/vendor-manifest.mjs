@@ -6,12 +6,13 @@ const packages = [
   ['indexeddb', 'packages/indexeddb-data-management/src'],
 ];
 const files = [];
+const canonicalText = content => content.toString('utf8').replace(/\r\n/g, '\n');
 for (const [directory, sourceDirectory] of packages) {
   const path = `docs/js/vendor/${directory}`;
   for (const filename of (await readdir(path)).filter(name => name.endsWith('.js')).sort()) {
     const localPath = `${path}/${filename}`;
     files.push({ path: localPath, sourcePath: `${sourceDirectory}/${filename}`,
-      sha256: createHash('sha256').update(await readFile(localPath)).digest('hex') });
+      sha256: createHash('sha256').update(canonicalText(await readFile(localPath))).digest('hex') });
   }
 }
 await writeFile('docs/js/vendor/manifest.json', `${JSON.stringify({ sourceRepository: 'reasonlynx', files }, null, 2)}\n`);

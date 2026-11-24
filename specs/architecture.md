@@ -89,6 +89,12 @@ There is no silent storage fallback advertised as a successful persistent save.
    analysis. Greek and KJV parses remain edition-specific; projection requires an
    explicit supplied alignment. Build connective lexicons as language-specific,
    versioned rules with applicability conditions, not unconditional string lookup.
+   The first adapter-contract slice is implemented: identified datasets must declare
+   dataset/version, analysis language, and exact edition source; clause, constituent,
+   role, dependency, verbal-feature, and connective proposals require known token IDs
+   and enter the portable project only as immutable `proposed` records with provenance.
+   Language/source mismatches, unknown types, duplicate IDs, and unmapped tokens reject
+   the import atomically. Review UI and accept/edit/reject commands remain next.
 
 1. **Reusable constituent refinement (UR-23, UR-24, UR-28, UR-81):** basic
    inspector authoring is implemented: selected source words define a canonical
