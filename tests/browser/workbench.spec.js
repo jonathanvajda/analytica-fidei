@@ -510,7 +510,15 @@ test('Hebrew vowel and cantillation display filters preserve the source token', 
   await expect(word.locator('.word-surface')).toHaveText('בראשית');
   await page.reload();
   await page.getByRole('button', { name: 'Hebrew marks', exact: true }).click();
+  await expect(page.locator('#toggle-vowels')).toBeVisible();
+  await expect(page.locator('#toggle-cantillation')).toBeVisible();
   await expect(word.locator('.word-surface')).toHaveText('בראשית');
+});
+
+test('Hebrew display controls stay hidden for non-Hebrew working texts', async ({ page }) => {
+  await createPracticeProject(page, 'en');
+  await expect(page.locator('#toggle-vowels')).toBeHidden();
+  await expect(page.locator('#toggle-cantillation')).toBeHidden();
 });
 
 test('supplied lexical glosses form a persistent optional canvas layer', async ({ page }) => {

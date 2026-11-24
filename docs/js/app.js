@@ -259,6 +259,9 @@ function renderProject() {
   for (const key of ['finite', 'connective', 'other']) $(`#landmark-${key}`).checked = landmarkFilters[key];
   const hasVowels = unit.tokens.some(token => /[\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/u.test(token.text));
   const hasCantillation = unit.tokens.some(token => /[\u0591-\u05AF]/u.test(token.text));
+  const isHebrewText = /^(hbo|he)(-|$)/i.test(unit.source.language);
+  $('#toggle-vowels').hidden = !isHebrewText;
+  $('#toggle-cantillation').hidden = !isHebrewText;
   $('#toggle-vowels').disabled = !hasVowels;
   $('#toggle-vowels').setAttribute('aria-pressed', String(hasVowels && showHebrewVowels));
   $('#toggle-vowels').textContent = !hasVowels ? 'Vowels unavailable' : showHebrewVowels ? 'Hide vowels' : 'Show vowels';
