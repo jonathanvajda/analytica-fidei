@@ -30,6 +30,15 @@ export function createAnalysisMermaid(project) {
     }
   }
   writeNodes(buildAnalysisOutline(project));
+  for (const dependency of project.dependencies ?? []) {
+    const name = id => {
+      const constituent = project.constituents.find(item => item.id === id);
+      return constituent?.label || constituent?.tokenIds.map(tokenId => tokens.get(tokenId) ?? '').filter(Boolean).join(' ') || 'constituent';
+    };
+    const proposition = project.propositions.findIndex(item => item.id === dependency.propositionId) + 1;
+    const target = dependency.targetId ? ` -> ${name(dependency.targetId)}` : '';
+    lines.push(`  %% P${proposition} ${escapeLabel(dependency.function)} modifier: ${escapeLabel(name(dependency.modifierId))}${escapeLabel(target)}`);
+  }
   for (const relation of project.relations) {
     const cues = (relation.anchors ?? []).map(anchor => {
       const word = tokens.get(anchor.tokenId) ?? 'source cue';

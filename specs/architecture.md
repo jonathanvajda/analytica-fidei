@@ -80,6 +80,16 @@ There is no silent storage fallback advertised as a successful persistent save.
 
 ### Prioritized near-term backlog
 
+0. **Parsed-analysis proposal ingestion (UR-15–21, UR-52, UR-83, UR-84):** inventory
+   the user's Greek and possible KJV parsed datasets, licenses, versions, token IDs,
+   annotation schemes, and coverage. Define an adapter contract that emits immutable,
+   provenance-bearing draft proposals for clauses, constituents, grammatical roles,
+   dependencies, verbal features, and connective cues. Add accept/reject/edit and
+   reversible bulk-review commands before any imported parse can become accepted
+   analysis. Greek and KJV parses remain edition-specific; projection requires an
+   explicit supplied alignment. Build connective lexicons as language-specific,
+   versioned rules with applicability conditions, not unconditional string lookup.
+
 1. **Reusable constituent refinement (UR-23, UR-24, UR-28, UR-81):** basic
    inspector authoring is implemented: selected source words define a canonical
    constituent with an explicit role, and that identity can be reused implicitly in
@@ -106,6 +116,11 @@ There is no silent storage fallback advertised as a successful persistent save.
    endpoints alongside propositions. Mixed proposition/group and group/group edges
    participate in editing, tracing, deletion cleanup, backup restore, and Mermaid
    export while ordered group membership remains a separate property.
+
+6. **Modifier dependencies (UR-25, UR-26):** reusable constituents can participate
+   in validated proposition-scoped modifier-to-target dependencies. General,
+   attributive, predicative, and substantive adjective functions are editable;
+   dependent role/constituent deletion is blocked until the assertion is removed.
 
 1. Identify the actual SBLGNT input files and release/license manifests. Build corpus
    loaders and a coverage-aware edition registry using the shared Greek and OSHB

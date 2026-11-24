@@ -56,3 +56,5 @@ body{background:var(--paper)}
 @media(max-width:680px){.brand img{width:34px;height:34px}.brand-name{font-size:1rem}.brand-name small{display:none}}
 .relation-chip.is-traced{border-color:#b37b2b;background:#f4e6c9}
 .group-badge label{display:inline-flex;align-items:center;gap:.3rem}.group-badge input{margin:0;accent-color:var(--accent)}
+.semantic-badge.dependency{display:inline-flex;align-items:center;gap:.2rem;border-color:#c8c4df;background:#f2f0fa;color:#554d79}.semantic-badge.dependency .quiet{padding:0 .15rem;color:inherit}
+:root[data-theme=dark] .semantic-badge.dependency{background:#302d47;border-color:#615b82;color:#ddd7ff}

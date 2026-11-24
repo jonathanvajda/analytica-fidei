@@ -6,10 +6,11 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{id:string, tokenIds:string[], label:string}} AnalysisConstituent */
 /** @typedef {{constituentId:string, role:string, realization:'explicit'|'implicit'}} AnalysisConstituentRole */
 /** @typedef {{tokenId:string, kind:'connective', function:string}} AnalysisAnchor */
+/** @typedef {{id:string,propositionId:string,modifierId:string,targetId?:string,function:'general'|'attributive'|'predicative'|'substantive'}} AnalysisDependency */
 /** @typedef {{id:string,targetType:'token'|'proposition'|'relation'|'constituent',targetId:string,text:string}} AnalysisNote */
 /** @typedef {{id:string, propositionIds:string[], label:string, anchors?:AnalysisAnchor[]}} AnalysisGroup */
 /** @typedef {{id:string, from:string, to:string, label:string, type?:string, anchors?:AnalysisAnchor[]}} AnalysisRelation */
-/** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
+/** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], dependencies:AnalysisDependency[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
 export function requireAnalysisCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -53,7 +54,7 @@ export function createAnalysisProject({ id, name, passage }) {
   requireAnalysisCondition(typeof name === 'string' && name.trim(), 'Give the project a name.');
   adaptAnalysisPassage(passage);
   return { schemaVersion: 1, id, name: name.trim(), passage: structuredClone(passage),
-    propositions: [], constituents: [], groups: [], relations: [], notes: [] };
+    propositions: [], constituents: [], dependencies: [], groups: [], relations: [], notes: [] };
 }
 
 /** Restore through the same commands used for editing; reject invalid imports atomically.
@@ -75,6 +76,7 @@ export function restoreAnalysisProject(value) {
     for (const anchor of proposition.anchors ?? []) project = addAnalysisPropositionAnchor(project,
       { propositionId: proposition.id, ...anchor });
   }
+  for (const dependency of value.dependencies ?? []) project = addAnalysisDependency(project, dependency);
   for (const group of value.groups) {
     project = addAnalysisGroup(project, group);
     for (const anchor of group.anchors ?? []) project = addAnalysisGroupAnchor(project, { groupId: group.id, ...anchor });
@@ -166,7 +168,7 @@ export function removeAnalysisTokensFromProposition(project, { propositionId, to
 }
 
 function analysisEntityIds(project) {
-  return [...project.propositions, ...(project.constituents ?? []), ...project.groups, ...project.relations,
+  return [...project.propositions, ...(project.constituents ?? []), ...(project.dependencies ?? []), ...project.groups, ...project.relations,
     ...(project.notes ?? [])].map(item => item.id);
 }
 
@@ -231,8 +233,43 @@ export function removeAnalysisConstituent(project, id) {
   const used = project.propositions.some(proposition =>
     (proposition.constituentRoles ?? []).some(role => role.constituentId === id));
   requireAnalysisCondition(!used, 'Remove this constituent from every proposition role before deleting it.');
+  requireAnalysisCondition(!(project.dependencies ?? []).some(item => item.modifierId === id || item.targetId === id),
+    'Remove grammatical dependencies involving this constituent before deleting it.');
   return { ...project, constituents: project.constituents.filter(item => item.id !== id),
     notes: (project.notes ?? []).filter(item => item.targetType !== 'constituent' || item.targetId !== id) };
+}
+
+export const MODIFIER_FUNCTIONS = Object.freeze([
+  { id: 'general', label: 'General modifier' }, { id: 'attributive', label: 'Attributive adjective' },
+  { id: 'predicative', label: 'Predicative adjective' }, { id: 'substantive', label: 'Substantive adjective' },
+]);
+
+/** Assert what a modifier modifies and how an adjective functions in one proposition. */
+export function addAnalysisDependency(project, { id, propositionId, modifierId, targetId, function: modifierFunction = 'general' }) {
+  requireAnalysisCondition(typeof id === 'string' && id.trim() && !analysisEntityIds(project).includes(id), 'Dependency ID must be unique.');
+  requireAnalysisCondition(project.propositions.some(item => item.id === propositionId), 'Choose a known proposition.');
+  requireAnalysisCondition(MODIFIER_FUNCTIONS.some(item => item.id === modifierFunction), 'Choose a supported modifier function.');
+  const known = new Set(project.constituents.map(item => item.id));
+  requireAnalysisCondition(known.has(modifierId), 'Choose a known modifier constituent.');
+  requireAnalysisCondition(modifierFunction === 'substantive' ? !targetId : known.has(targetId) && targetId !== modifierId,
+    modifierFunction === 'substantive' ? 'A substantive adjective does not modify another constituent.' : 'Choose a different known target constituent.');
+  const roles = project.propositions.find(item => item.id === propositionId).constituentRoles ?? [];
+  requireAnalysisCondition(roles.some(item => item.constituentId === modifierId), 'Assign the modifier to this proposition first.');
+  if (targetId) requireAnalysisCondition(roles.some(item => item.constituentId === targetId), 'Assign the target constituent to this proposition first.');
+  return { ...project, dependencies: [...(project.dependencies ?? []),
+    { id, propositionId, modifierId, ...(targetId ? { targetId } : {}), function: modifierFunction }] };
+}
+
+export function updateAnalysisDependency(project, { id, propositionId, modifierId, targetId, function: modifierFunction }) {
+  requireAnalysisCondition((project.dependencies ?? []).some(item => item.id === id), 'Choose a known grammatical dependency.');
+  const without = { ...project, dependencies: project.dependencies.filter(item => item.id !== id) };
+  const revised = addAnalysisDependency(without, { id, propositionId, modifierId, targetId, function: modifierFunction }).dependencies.at(-1);
+  return { ...project, dependencies: project.dependencies.map(item => item.id === id ? revised : item) };
+}
+
+export function removeAnalysisDependency(project, id) {
+  requireAnalysisCondition((project.dependencies ?? []).some(item => item.id === id), 'Choose a known grammatical dependency.');
+  return { ...project, dependencies: project.dependencies.filter(item => item.id !== id) };
 }
 
 /** Reference one reusable constituent from a proposition role.
@@ -264,6 +301,9 @@ export function detachAnalysisConstituent(project, { propositionId, constituentI
   const roles = proposition.constituentRoles ?? [];
   requireAnalysisCondition(roles.some(item => item.constituentId === constituentId && item.role === role),
     'Choose a known constituent role.');
+  requireAnalysisCondition(!(project.dependencies ?? []).some(item => item.propositionId === propositionId
+    && (item.modifierId === constituentId || item.targetId === constituentId)),
+  'Remove the grammatical dependency involving this constituent before detaching its role.');
   return { ...project, propositions: project.propositions.map(item => item.id === propositionId
     ? { ...item, constituentRoles: roles.filter(assertion =>
       assertion.constituentId !== constituentId || assertion.role !== role) } : item) };
@@ -426,6 +466,7 @@ export function removeAnalysisProposition(project, id) {
   const removedEndpoints = new Set([id, ...removedGroupIds]);
   const removedRelationIds = new Set(project.relations.filter(item => removedEndpoints.has(item.from) || removedEndpoints.has(item.to)).map(item => item.id));
   return { ...project, propositions: project.propositions.filter(item => item.id !== id),
+    dependencies: (project.dependencies ?? []).filter(item => item.propositionId !== id),
     groups: project.groups.filter(group => !removedGroupIds.has(group.id)),
     relations: project.relations.filter(item => !removedEndpoints.has(item.from) && !removedEndpoints.has(item.to)),
     notes: (project.notes ?? []).filter(item => !(item.targetType === 'proposition' && item.targetId === id)

@@ -1,6 +1,7 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisGroup, updateAnalysisGroup,
   addAnalysisRelation, removeAnalysisProposition, restoreAnalysisProject, buildAnalysisOutline,
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
+  addAnalysisDependency, updateAnalysisDependency, removeAnalysisDependency,
   attachAnalysisConstituent, addAnalysisPropositionAnchor,
   addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
   addAnalysisGroupAnchor, removeAnalysisGroupAnchor, removeAnalysisGroup,
@@ -215,6 +216,23 @@ test('one source constituent can fill explicit and implicit proposition roles wi
   project = removeAnalysisConstituent(project, 'people');
   expect(project.constituents).toEqual([]);
   expect(project.notes).toEqual([]);
+});
+
+test('modifier dependencies target constituents and retain editable adjective function', () => {
+  let project = withPropositions();
+  const [modifierToken, targetToken] = project.propositions[0].tokenIds;
+  project = addAnalysisConstituent(project, { id: 'modifier', tokenIds: [modifierToken], label: 'good' });
+  project = addAnalysisConstituent(project, { id: 'head', tokenIds: [targetToken], label: 'work' });
+  project = attachAnalysisConstituent(project, { propositionId: 'p0', constituentId: 'modifier', role: 'modifier', realization: 'explicit' });
+  project = attachAnalysisConstituent(project, { propositionId: 'p0', constituentId: 'head', role: 'direct object', realization: 'explicit' });
+  project = addAnalysisDependency(project, { id: 'dependency', propositionId: 'p0', modifierId: 'modifier', targetId: 'head', function: 'attributive' });
+  expect(project.dependencies[0]).toMatchObject({ modifierId: 'modifier', targetId: 'head', function: 'attributive' });
+  expect(() => detachAnalysisConstituent(project, { propositionId: 'p0', constituentId: 'head', role: 'direct object' })).toThrow(/dependency/);
+  project = updateAnalysisDependency(project, { id: 'dependency', propositionId: 'p0', modifierId: 'modifier', targetId: 'head', function: 'predicative' });
+  expect(project.dependencies[0].function).toBe('predicative');
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
+  project = removeAnalysisDependency(project, 'dependency');
+  expect(project.dependencies).toEqual([]);
 });
 
 test('connective anchors overlap source coverage without becoming duplicate proposition tokens', () => {

@@ -5,6 +5,7 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, detachAnalysisConstituent,
+  MODIFIER_FUNCTIONS, addAnalysisDependency, updateAnalysisDependency, removeAnalysisDependency,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
   updateAnalysisRelation, removeAnalysisRelation, traceAnalysisArgument } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
@@ -56,6 +57,7 @@ let editingRelationId = null;
 let editingNoteId = null;
 let noteDraftTarget = null;
 let editingGroupId = null;
+let editingDependencyId = null;
 let operationQueue = Promise.resolve();
 let undoStack = [];
 let redoStack = [];
@@ -86,7 +88,7 @@ function closeSettings() {
 }
 
 function closeEditors() {
-  for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#role-form', '#note-form', '#word-inspector']) $(selector).hidden = true;
+  for (const selector of ['#group-form', '#relation-form', '#anchor-form', '#role-form', '#modifier-form', '#note-form', '#word-inspector']) $(selector).hidden = true;
   $('#context-drawer').hidden = true;
   $('#toggle-inspector').setAttribute('aria-expanded', 'false');
   $('#inspector-empty').hidden = false;
@@ -193,6 +195,10 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
   onDetachConstituent: (propositionId, constituentId, role) => runUiOperation(async () => {
     await persistProject(detachAnalysisConstituent(project, { propositionId, constituentId, role }));
     report('Grammatical role removed. The reusable constituent and source words were retained.');
+  }),
+  onEditDependency: openDependencyEditor,
+  onRemoveDependency: id => runUiOperation(async () => {
+    await persistProject(removeAnalysisDependency(project, id)); report('Modifier analysis removed. Constituents and roles were retained.');
   }),
   onEditNote: openNoteEditor,
   onRemoveNote: id => runUiOperation(async () => {
@@ -304,6 +310,8 @@ function updateCanvasActions() {
   $('#open-anchor').disabled = selectedTokens.size !== 1
     || (selectedPropositions.size !== 1 && selectedGroups.size !== 1 && !focusedRelationId);
   $('#open-role').disabled = selectedPropositions.size !== 1 || (!selectedTokens.size && !project.constituents.length);
+  const selectedProposition = project.propositions.find(item => selectedPropositions.has(item.id));
+  $('#open-modifier').disabled = !selectedProposition || !(selectedProposition.constituentRoles?.length);
   $('#open-note').disabled = !((selectedTokens.size === 1 && selectedPropositions.size === 0) ||
     (selectedTokens.size === 0 && selectedPropositions.size === 1));
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
@@ -522,6 +530,56 @@ $('#role-form').addEventListener('submit', event => {
     selectedTokens.clear(); selectedPropositions.clear(); selectedGroups.clear(); $('#role-label').value = ''; $('#role-type').value = ''; closeEditors();
     await persistProject(next);
     report(selected === '__selected' ? 'Explicit grammatical constituent created and assigned.' : 'Reusable constituent assigned to the proposition.');
+  });
+});
+
+function configureModifierTarget() {
+  const substantive = $('#modifier-function').value === 'substantive';
+  $('#modifier-target').disabled = substantive;
+  $('#modifier-target').required = !substantive;
+  if (substantive) $('#modifier-target').value = '';
+}
+
+function openDependencyEditor(id = null) {
+  editingDependencyId = id;
+  const dependency = id ? project.dependencies.find(item => item.id === id) : null;
+  const propositionId = dependency?.propositionId ?? [...selectedPropositions][0];
+  const proposition = project.propositions.find(item => item.id === propositionId);
+  const constituentIds = [...new Set((proposition.constituentRoles ?? []).map(item => item.constituentId))];
+  const options = constituentIds.map(constituentId => {
+    const constituent = project.constituents.find(item => item.id === constituentId);
+    const text = constituent.label || activeUnit().tokens.filter(token => constituent.tokenIds.includes(token.id)).map(token => token.text).join(' ');
+    return { id: constituentId, text };
+  });
+  $('#modifier-constituent').replaceChildren(...options.map(item => el('option', { value: item.id, text: item.text })));
+  $('#modifier-target').replaceChildren(el('option', { value: '', text: 'Choose a target' }),
+    ...options.map(item => el('option', { value: item.id, text: item.text })));
+  $('#modifier-function').replaceChildren(...MODIFIER_FUNCTIONS.map(item => el('option', { value: item.id, text: item.label })));
+  $('#modifier-constituent').value = dependency?.modifierId ?? options[0]?.id ?? '';
+  $('#modifier-function').value = dependency?.function ?? 'general';
+  $('#modifier-target').value = dependency?.targetId ?? '';
+  $('#modifier-form').dataset.propositionId = propositionId;
+  $('#modifier-form-title').textContent = dependency ? 'Edit modifier analysis' : 'Analyze a modifier';
+  $('#save-modifier').textContent = dependency ? 'Save modifier changes' : 'Save modifier analysis';
+  configureModifierTarget();
+  openCanvasEditor('#modifier-form');
+}
+
+$('#open-modifier').addEventListener('click', () => openDependencyEditor());
+$('#modifier-function').addEventListener('change', configureModifierTarget);
+$('#modifier-constituent').addEventListener('change', () => {
+  if ($('#modifier-target').value === $('#modifier-constituent').value) $('#modifier-target').value = '';
+});
+$('#modifier-form').addEventListener('submit', event => {
+  event.preventDefault();
+  runUiOperation(async () => {
+    const input = { id: editingDependencyId ?? crypto.randomUUID(), propositionId: event.currentTarget.dataset.propositionId,
+      modifierId: $('#modifier-constituent').value, targetId: $('#modifier-target').value || undefined,
+      function: $('#modifier-function').value };
+    const revised = Boolean(editingDependencyId);
+    const next = revised ? updateAnalysisDependency(project, input) : addAnalysisDependency(project, input);
+    editingDependencyId = null; selectedPropositions.clear(); closeEditors();
+    await persistProject(next); report(revised ? 'Modifier analysis updated.' : 'Modifier analysis saved.');
   });
 });
 

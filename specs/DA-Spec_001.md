@@ -124,6 +124,8 @@ Display a lexical gloss, an actual translated passage, and an alignment as disti
 | UR-20 | Override an automatic interpretation | Editable role and relation assertions | P0 |
 | UR-21 | Distinguish automatic suggestions from user decisions | Provenance and review status tracking | P0 |
 | UR-52 | Receive only grammatical suggestions applicable to the analysis language | Language- and annotation-scheme-specific rule modules with declared input prerequisites and supported constructions | TBD |
+| UR-83 | Seed an analysis from an identified dataset that already supplies partial or complete grammatical parsing | Versioned syntax-dataset adapters that map supplied clauses, constituents, dependencies, subjects, predicates, and verbal features to reviewable analysis proposals with source-token alignment and provenance | TBD |
+| UR-84 | Receive draft connective and discourse-function proposals from a curated language-specific lexicon | Versioned connective-lexicon rules with declared forms/lemmas, applicability conditions, confidence or determinacy, scope, and provenance | TBD |
 
 **Acceptance criteria**: Given a morphologically annotated passage, the application identifies what can be established with available rules and data, then presents unresolved choices without silently committing to an interpretation.
 
@@ -138,6 +140,12 @@ Morphological parsing is not equivalent to syntactic parsing. The application mu
 English, Greek, Hebrew, and Aramaic rules are separate capabilities. The application must not copy Greek grammatical assumptions onto English or Hebrew text, or infer a syntactic parse merely because morphology is available. Absence of a supported rule leaves an analysis unresolved and editable.
 
 **Additional acceptance criteria**: With the analysis basis set to Hebrew, an unsupported construction remains unresolved; Greek-only rules do not execute. Switching only the supporting display language leaves accepted grammatical assertions unchanged.
+
+**Parsed-dataset acceptance criteria**: Import an identified Greek syntax dataset whose token mapping is complete for a passage. Supplied clause boundaries, subjects, predicates, dependencies, and verbal features appear as a draft analysis with the dataset name, version, and assertion provenance. The user can accept, edit, or reject each proposal or a coherent proposal set. Re-importing or changing the dataset does not overwrite accepted user assertions. Unmapped or conflicting tokens remain explicit rather than being aligned by spelling or Strong’s number alone.
+
+An accompanying KJV or other translation parse is a separate edition-specific analysis source. It may be shown in parallel or linked through supplied alignments, but it must not be treated as proof of Greek syntax or silently projected onto Greek tokens. Conversely, a parsed Greek subject or predicate may inform a reviewable cross-edition suggestion only when an explicit alignment supports it.
+
+Connective automation is lexicon- and construction-specific. A rule may mark a form such as Greek `ἵνα` as a strong candidate subordination/purpose cue when its lemma, morphology, and construction satisfy the rule; it must still distinguish the textual cue, its scope, and any proposed discourse relationship. English forms such as “therefore” use a separate English rule set. A lexicon entry may be highly regular without being modeled as an context-free universal meaning.
 
 ### 4.4 Manual grammatical analysis
 
@@ -428,6 +436,8 @@ Additional information improves the quality of automation:
 | Phrase structure annotations | Propose grammatical constituents |
 | Dependency annotations | Infer candidate grammatical heads and dependencies |
 | Existing clause/proposition annotations | Produce substantially more complete sentence flow |
+| Parsed syntax datasets | Import supplied clauses, constituents, dependencies, subjects, predicates, and verbal features as provenance-bearing proposals |
+| Curated connective lexicons | Propose cue anchors, scope, coordination/subordination, and candidate discourse functions under language-specific applicability rules |
 
 An important distinction: Strong's numbers and morphological tags do not themselves supply a syntactic parse. Even with complete morphology, some syntactic relationships will remain unresolved.
 
@@ -436,6 +446,7 @@ An important distinction: Strong's numbers and morphological tags do not themsel
 | # | Stage | Description |
 | --- | --- | --- |
 | 1 | Load and normalize | Read passage tokens, IDs, punctuation, and available linguistic annotations. |
+| 1a | Align imported analyses | Use provider token IDs or explicit span mappings to connect parsed-dataset assertions to the selected edition; retain unmapped/conflicting records. |
 | 2 | Identify candidate clause boundaries | Use finite verbs, conjunctions, punctuation, and available clause annotations. |
 | 3 | Identify predicate candidates | Recognize finite verbs, copular constructions, nonverbal predicates, and other supported constructions. |
 | 4 | Generate constituent candidates | Detect potential prepositional phrases, nominal groups, participial constructions, and other patterns. |
@@ -443,6 +454,8 @@ An important distinction: Strong's numbers and morphological tags do not themsel
 | 6 | Mark uncertainty | Retain alternative interpretations and unresolved tokens or relationships. |
 | 7 | Generate sentence flow | Apply layout constraints to accepted structures and unambiguous proposals. |
 | 8 | Present unresolved choices | Offer available placements and functions, with explanations where possible. |
+
+Every generated or imported proposal records at least its provider, dataset/rule-set identifier, version, target analysis language and edition, creation/import time where available, input token/span anchors, proposal status, and an explanation or source record reference. Proposal statuses are `proposed`, `accepted`, `rejected`, or `superseded`; only accepted assertions become the current analysis. Bulk acceptance is permitted only for a visible, reversible proposal set.
 
 ### 6.3 Specialized Greek grammatical rules
 

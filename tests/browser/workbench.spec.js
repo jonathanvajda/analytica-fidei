@@ -353,6 +353,36 @@ test('role and connective actions remain visible when enabled on a narrow screen
   await expect(page.getByRole('button', { name: 'Anchor connective', exact: true })).toBeEnabled();
 });
 
+test('a modifier can target another constituent and change adjective function', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 3);
+  await page.locator('.canvas-word').nth(0).click();
+  await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
+  await page.getByRole('button', { name: 'Assign role' }).click();
+  await page.locator('#role-label').fill('good');
+  await page.locator('#role-type').selectOption('modifier');
+  await page.getByRole('button', { name: 'Save grammatical role' }).click();
+  await page.locator('.canvas-word').nth(1).click();
+  await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
+  await page.getByRole('button', { name: 'Assign role' }).click();
+  await page.locator('#role-label').fill('work');
+  await page.locator('#role-type').selectOption('direct object');
+  await page.getByRole('button', { name: 'Save grammatical role' }).click();
+  await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
+  await page.getByRole('button', { name: 'Analyze modifier' }).click();
+  await page.locator('#modifier-constituent').selectOption({ label: 'good' });
+  await page.locator('#modifier-function').selectOption('attributive');
+  await page.locator('#modifier-target').selectOption({ label: 'work' });
+  await page.getByRole('button', { name: 'Save modifier analysis' }).click();
+  await expect(page.locator('.semantic-badge.dependency')).toContainText('attributive: good → work');
+  await page.getByRole('button', { name: 'Edit modifier good' }).click();
+  await page.locator('#modifier-function').selectOption('predicative');
+  await page.getByRole('button', { name: 'Save modifier changes' }).click();
+  await expect(page.locator('.semantic-badge.dependency')).toContainText('predicative: good → work');
+  await page.getByRole('button', { name: 'Remove modifier good' }).click();
+  await expect(page.locator('.semantic-badge.dependency')).toHaveCount(0);
+});
+
 test('a proposition note can be authored, revised, persisted, and removed', async ({ page }) => {
   await createPracticeProject(page);
   await createProposition(page, 0, 3);

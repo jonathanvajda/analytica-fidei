@@ -26,7 +26,8 @@ function positionElement(element, left, top, width) {
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
   onMoveWord, onToggleProposition, onToggleGroup, onRemoveProposition, onEditGroup, onRemoveGroup, onRemovePropositionAnchor,
-  onDetachConstituent, onEditNote, onRemoveNote, onFocusRelation, onRemoveRelationAnchor, onRemoveGroupAnchor }) {
+  onDetachConstituent, onEditDependency, onRemoveDependency, onEditNote, onRemoveNote,
+  onFocusRelation, onRemoveRelationAnchor, onRemoveGroupAnchor }) {
   let model;
   let state;
   let zoom = 1;
@@ -116,6 +117,21 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
           el('span', { text: `${assertion.realization === 'implicit' ? '↶ ' : ''}${assertion.role}: ${name}` }), removeRole,
         ]);
       });
+      const dependencies = (state.project.dependencies ?? []).filter(item => item.propositionId === proposition.id)
+        .map(dependency => {
+          const name = id => {
+            const constituent = state.project.constituents.find(item => item.id === id);
+            return constituent?.label || tokenText(constituent?.tokenIds ?? []) || 'constituent';
+          };
+          const edit = el('button', { type: 'button', className: 'quiet', text: 'Edit', 'aria-label': `Edit modifier ${name(dependency.modifierId)}` });
+          edit.addEventListener('click', () => onEditDependency(dependency.id));
+          const remove = el('button', { type: 'button', className: 'quiet', text: '×', 'aria-label': `Remove modifier ${name(dependency.modifierId)}` });
+          remove.addEventListener('click', () => onRemoveDependency(dependency.id));
+          const target = dependency.targetId ? ` → ${name(dependency.targetId)}` : '';
+          return el('span', { className: 'semantic-badge dependency', title: 'Grammatical modifier dependency' }, [
+            el('span', { text: `${dependency.function}: ${name(dependency.modifierId)}${target}` }), edit, remove,
+          ]);
+        });
       const anchors = (proposition.anchors ?? []).map(anchor => {
         const word = model.unit.tokens.find(token => token.id === anchor.tokenId)?.text ?? 'source cue';
         const removeAnchor = el('button', { type: 'button', className: 'quiet', text: '×',
@@ -133,7 +149,7 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
           return el('span', { className: 'semantic-badge note', title: note.text },
             [el('span', { text: `Note · ${note.category ?? 'general'}: ${note.text}` }), editNote, removeNote]);
         });
-      heading.append(el('label', {}, [checkbox, el('span', { text: `P${number}` })]), ...roles, ...anchors, ...notes, remove);
+      heading.append(el('label', {}, [checkbox, el('span', { text: `P${number}` })]), ...roles, ...dependencies, ...anchors, ...notes, remove);
     } else heading.append(el('span', { className: 'source-heading', text: 'Source' }));
     wrapper.append(heading);
     return [wrapper, ...block.words.flatMap(word => renderWord(word, block))];

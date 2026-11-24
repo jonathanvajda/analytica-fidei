@@ -73,7 +73,7 @@
         <aside id="context-drawer" class="context-drawer" hidden aria-label="Contextual inspector">
         <div class="drawer-heading"><h2>Inspector</h2><button class="quiet" id="close-inspector" aria-label="Close inspector">✕</button></div>
         <p id="inspector-empty" class="small subtle">Select a word for details, or select propositions and discourse groups to connect their ideas.</p>
-        <div class="toolbar inspector-actions" aria-label="Contextual analysis actions"><button id="open-role" disabled>Assign role</button><button id="open-anchor" disabled>Anchor connective</button><button id="open-note" disabled>Add note</button></div>
+        <div class="toolbar inspector-actions" aria-label="Contextual analysis actions"><button id="open-role" disabled>Assign role</button><button id="open-modifier" disabled>Analyze modifier</button><button id="open-anchor" disabled>Anchor connective</button><button id="open-note" disabled>Add note</button></div>
         <section id="constituent-library" class="constituent-library" hidden aria-labelledby="constituent-library-title"><h3 id="constituent-library-title" class="section-label">Reusable constituents</h3><div id="constituent-list"></div></section>
         <form id="group-form" class="canvas-popover" hidden>
           <div class="popover-heading"><strong id="group-form-title">Group propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close group editor">✕</button></div>
@@ -111,6 +111,14 @@
           <label for="role-realization">Realization</label><select id="role-realization" required><option value="explicit">Explicit in this proposition</option><option value="implicit">Implicitly reused here</option></select>
           <p class="small subtle">Define selected source words once, then reuse that same constituent in propositions where it is understood but unexpressed.</p>
           <button class="primary" type="submit">Save grammatical role</button>
+        </form>
+        <form id="modifier-form" class="canvas-popover" hidden>
+          <div class="popover-heading"><strong id="modifier-form-title">Analyze a modifier</strong><button type="button" class="quiet" data-close-popover aria-label="Close modifier editor">×</button></div>
+          <label for="modifier-constituent">Modifier</label><select id="modifier-constituent" required></select>
+          <label for="modifier-function">Function</label><select id="modifier-function" required></select>
+          <label for="modifier-target">Modified constituent</label><select id="modifier-target"></select>
+          <p class="small subtle">Attributive, predicative, and general modifiers require a different target in this proposition. A substantive adjective stands as a nominal and has no target.</p>
+          <button id="save-modifier" class="primary" type="submit">Save modifier analysis</button>
         </form>
         <form id="note-form" class="canvas-popover" hidden>
           <div class="popover-heading"><strong id="note-form-title">Add an analysis note</strong><button type="button" class="quiet" data-close-popover aria-label="Close note editor">×</button></div>
