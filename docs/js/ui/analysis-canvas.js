@@ -1,6 +1,7 @@
 import { computeAnalysisCanvas, CANVAS_CELL_WIDTH as CELL, CANVAS_ROW_HEIGHT as ROW,
   CANVAS_WORD_HEIGHT as WORD_HEIGHT } from '../core/canvas-layout.js';
 import { MAX_CANVAS_ROW } from '../core/presentation.js';
+import { collectGrammaticalLandmarks, GRAMMATICAL_LANDMARK_TYPES } from '../core/grammatical-landmarks.js';
 import { createUiElement as el } from './dom.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -34,6 +35,7 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
   let drag = null;
   let suppressClick = false;
   let widths = {};
+  let landmarks = new Map();
   const measurer = document.createElement('canvas').getContext('2d');
 
   function measureTokenWidths(project) {
@@ -71,13 +73,20 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function renderWord(word, block) {
     const gloss = state.showGlosses ? model.unit.annotations.find(item => item.kind === 'gloss' && item.targetTokenId === word.id && item.status !== 'unavailable') : null;
-    const button = el('button', { type: 'button', className: `token canvas-word${gloss ? ' has-gloss' : ''}`,
+    const wordLandmarks = state.showLandmarks ? landmarks.get(word.id) ?? [] : [];
+    const landmarkNames = wordLandmarks.map(item => GRAMMATICAL_LANDMARK_TYPES.find(type => type.id === item.type)?.label).filter(Boolean);
+    const button = el('button', { type: 'button', className: `token canvas-word${gloss ? ' has-gloss' : ''}${wordLandmarks.map(item => ` landmark-${item.type}`).join('')}`,
       lang: word.language, dir: 'auto', 'data-token-id': word.id, 'data-column': word.column, 'data-row': word.row,
       'aria-pressed': state.selectedTokens.has(word.id),
-      'aria-label': `${word.text} · ${block.kind === 'source' ? 'unassigned' : `proposition ${state.project.propositions.findIndex(item => item.id === block.id) + 1}`} · column ${word.column + 1}, row ${word.row + 1}`,
+      'aria-label': `${word.text} · ${block.kind === 'source' ? 'unassigned' : `proposition ${state.project.propositions.findIndex(item => item.id === block.id) + 1}`} · column ${word.column + 1}, row ${word.row + 1}${landmarkNames.length ? ` · ${landmarkNames.join(', ')}` : ''}`,
       title: 'Drag to place · Arrow keys to nudge · Double-click for word details' });
     button.append(el('span', { className: 'word-surface', text: displayTokenText(word) }),
-      ...(gloss ? [el('span', { className: 'word-gloss', text: gloss.value, lang: gloss.language, dir: 'auto' })] : []));
+      ...(gloss ? [el('span', { className: 'word-gloss', text: gloss.value, lang: gloss.language, dir: 'auto' })] : []),
+      ...wordLandmarks.map(item => {
+        const type = GRAMMATICAL_LANDMARK_TYPES.find(candidate => candidate.id === item.type);
+        return el('span', { className: `word-landmark ${item.source}`, text: type.symbol,
+          title: `${type.label} · ${item.source}`, 'aria-hidden': 'true' });
+      }));
     const x = model.gutter + word.column * CELL;
     const y = block.wordY + word.row * ROW;
     const elements = [positionElement(button, x, y, word.width * CELL - 4)];
@@ -241,6 +250,7 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function render(nextState) {
     state = nextState;
+    landmarks = collectGrammaticalLandmarks(state.project);
     widths = measureTokenWidths(state.project);
     model = computeAnalysisCanvas(state.project, { tokenWidths: widths });
     root.style.height = `${model.height}px`;

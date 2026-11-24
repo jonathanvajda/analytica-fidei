@@ -103,6 +103,7 @@ A passage reference is a navigation anchor, not a sufficient token or propositio
 | UR-14 | Analyze passages spanning multiple verses | Verse-independent span and clause model | P0 |
 | UR-50 | Inspect words and their annotated subword units without losing the source text | Edition-specific token and morpheme identities with ordered membership and links to the original word | TBD |
 | UR-51 | Distinguish unavailable metadata from a word with no applicable annotation | Coverage/status fields and provenance for lemma, gloss, morphology, part of speech, and lexical-reference assertions | TBD |
+| UR-85 | Toggle an at-a-glance grammatical landmark layer that makes finite verbs, logical connectives, and other supplied parts of speech visually distinguishable | Language-aware annotation styling with user-selectable layers, an accessible legend, redundant color-and-symbol encoding, coverage/provenance status, and unchanged canonical tokens | TBD |
 
 **Acceptance criteria**: Staging a passage retains its original order. When a user assigns a word to a grammatical constituent, that word remains visible in staging but becomes visually de-emphasized. Removing the assignment restores its prominence.
 
@@ -111,6 +112,10 @@ A token should be allowed to participate in multiple levels of structure. For ex
 Display a lexical gloss, an actual translated passage, and an alignment as distinct kinds of information. A part-of-speech annotation is not the same as a user-assigned syntactic role. Strong’s references identify lexical resources; they are not unique token IDs or sufficient evidence that two expressions align.
 
 **Additional acceptance criteria**: Selecting an annotated Hebrew word can expose its prefixes or other supplied morphemes while preserving the complete source word. A token with missing morphology or gloss data remains usable and is labeled as unavailable rather than receiving an invented annotation.
+
+**Grammatical-landmark acceptance criteria**: Turn on grammatical landmarks for an annotated Greek passage and identify finite verbs and logical connectives without opening each word’s Inspector. Turn the layer off and recover the normal text presentation without changing source strings, token identities, selection, layout, or accepted analysis. Each visible class uses both color and a non-color cue such as a small glyph, border pattern, underline, or compact abbreviation; the legend and accessible name expose the same meaning. Dark mode, color-vision deficiencies, and monochrome output remain distinguishable. Supplied, inferred, proposed, and unavailable classifications must not share an indistinguishable presentation.
+
+The landmark vocabulary is language- and annotation-scheme-specific. A Greek finite-verb marker may be derived from supplied morphology, while an English connective marker may come from a curated English lexicon. A user may independently emphasize useful subsets—at minimum finite predicates and connective cues—rather than enabling every part-of-speech color simultaneously. The overlay visualizes sourced annotations or clearly labeled proposals; it does not convert part of speech into an accepted grammatical role.
 
 ### 4.3 Automatic sentence-flow construction
 
@@ -162,6 +167,7 @@ Connective automation is lexicon- and construction-specific. A rule may mark a f
 | UR-30 | Add grammatical notes | Annotation entities | P1 |
 | UR-53 | Distinguish changing the display language from starting an analysis of another edition’s syntax | An explicit analysis-basis field and a deliberate create/copy-analysis workflow for a new edition or language | TBD |
 | UR-81 | Reuse an understood subject, predicate, object, or other constituent in propositions where it is not repeated in the text | Stable constituent identities plus proposition-role assertions that distinguish explicit realization from implicit reuse | TBD |
+| UR-86 | Build phrases and modifier structures by snapping words or existing phrases into grammatically meaningful slots with immediate visual feedback | Nested constituent drag targets, language-aware compatibility rules, semantic snap previews, explicit dependency confirmation, group movement, and layout constraints that render accepted attachments using sentence-flow indentation | TBD |
 
 **Acceptance criteria**: The user can create a phrase, assign an adjective to modify its head, change the adjective's interpretation, and see the sentence-flow layout update without losing the original source text.
 
@@ -170,6 +176,10 @@ A Greek syntactic analysis displayed alongside aligned English is still a Greek 
 **Additional acceptance criteria**: Switching the visible text from Greek to aligned English does not relabel Greek dependencies as English syntax. Starting an English-based syntactic analysis creates or explicitly selects a separate analysis while retaining the existing Greek analysis.
 
 A reused constituent is one canonical grammatical entity, not a copied source token and not parenthetical text inserted into the edition. Each proposition-role assertion records both the grammatical role and whether the constituent is explicitly realized in that proposition or supplied implicitly by ellipsis. The same mechanism applies to subjects, predicates, objects, determiners, and other supported roles rather than introducing a special-purpose “implied subject” field.
+
+**Semantic-snap acceptance criteria**: Drag an adjective beneath and slightly to the right of a nominal constituent. Before release, the candidate head and modifier slot are highlighted and the preview identifies the proposed attachment and available adjective function. Confirming the snap creates or updates the explicit dependency and its corresponding `IndentedUnder` layout constraint; cancelling leaves both semantics and layout unchanged. The same interaction can group several words into a phrase and then attach that phrase as a unit to a compatible predicate, nominal, or clause slot. Invalid targets explain why they are incompatible rather than merely refusing the drop.
+
+Spatial proximity alone is not an assertion. Free placement remains available for readability, while entering a recognized semantic snap zone produces a preview that must be confirmed. Accepted dependencies remain inspectable and editable independently of coordinates. Moving a phrase preserves its internal membership and arrangement; moving a parent with attached children offers a coherent group move without destroying manual offsets. Visual belonging may use indentation, shared background or bracket, alignment, and compact slot markers rather than requiring a line for every dependency.
 
 ### 4.5 Proposition and discourse analysis
 
@@ -510,6 +520,17 @@ The sequence should be:
 7. The diagram reflows around the resulting structure.
 
 If more than one relationship is plausible, the application should offer a compact choice rather than arbitrarily committing.
+
+Snap targets operate at more than one level:
+
+- **Word → phrase**: add an eligible word to a new or existing constituent without duplicating its source token.
+- **Phrase → phrase/head**: attach a constituent as modifier, complement, determiner, governed object, or another supported dependency.
+- **Phrase → predicate/clause slot**: propose subject, object, adjunct, predicate complement, or language-specific roles.
+- **Structure → structure**: move a parent and its accepted dependents as a coherent visual unit while retaining nested semantic identities.
+
+The default sentence-flow convention renders an accepted modifier beneath and modestly to the right of its head. The exact horizontal offset is a theme/layout token rather than semantic data. A shared indentation/alignment pattern, subtle containment treatment, and optional compact role/function marker provide visual feedback that units belong together. Explicit connector lines remain available for focus or accessibility but are not required in the normal compact view.
+
+During a drag, compatible slots display their expected role and candidate target; incompatible slots remain visibly distinct and expose a reason on focus or attempted drop. Keyboard operation offers the same target list and confirmation without requiring coordinate manipulation.
 
 ### 7.2 Layout primitives
 

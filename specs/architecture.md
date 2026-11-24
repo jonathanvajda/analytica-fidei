@@ -122,6 +122,26 @@ There is no silent storage fallback advertised as a successful persistent save.
    attributive, predicative, and substantive adjective functions are editable;
    dependent role/constituent deletion is blocked until the assertion is removed.
 
+7. **Grammatical landmark overlay (UR-11, UR-17, UR-43, UR-51, UR-84, UR-85):**
+   add optional, independently selectable visual layers for supplied/proposed parts
+   of speech, finite predicates, and connective cues. Define language/profile-specific
+   class mappings and coverage states. Use redundant color plus glyph/pattern/label
+   encoding, an accessible legend, dark/monochrome testing, and no mutation of source
+   tokens or accepted grammatical roles.
+   The first slice is implemented for explicit supplied POS values and accepted
+   connective anchors, with a persistent toggle, coverage message, accessible names,
+   redundant glyph/pattern styling, and a legend. Morphology-scheme decoders and
+   independently selectable landmark subsets remain future work.
+
+8. **Hierarchical semantic snapping (UR-22–26, UR-40, UR-42, UR-58, UR-78, UR-86):**
+   extend the current token grid into word-to-phrase, phrase-to-head, and
+   phrase-to-clause snap targets. Preview the proposed constituent membership,
+   dependency target, role/function, and resulting indentation before confirmation.
+   Render accepted modifiers beneath and offset from their heads with subtle shared
+   containment/alignment feedback; retain free manual placement and never infer a
+   dependency from coordinates alone. Add coherent parent/child movement and keyboard
+   equivalents after the underlying nested layout constraints are stable.
+
 1. Identify the actual SBLGNT input files and release/license manifests. Build corpus
    loaders and a coverage-aware edition registry using the shared Greek and OSHB
    profiles; add passage navigation and multiple analysis documents per project.

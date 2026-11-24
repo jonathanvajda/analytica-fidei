@@ -16,6 +16,7 @@ import { createAnalysisCanvasController } from './ui/analysis-canvas.js';
 import { createEditionLibrary, loadBundledEditionCatalog } from './adapters/edition-library.js';
 import { normalizeEditionCorpus } from './core/editions.js';
 import { createAnalysisMermaid } from './core/mermaid-export.js';
+import { collectGrammaticalLandmarks, GRAMMATICAL_LANDMARK_TYPES } from './core/grammatical-landmarks.js';
 import { createEditionBrowser } from './ui/edition-browser.js';
 
 const $ = selector => document.querySelector(selector);
@@ -23,6 +24,7 @@ const THEME_STORAGE_KEY = 'analytica-fidei-theme';
 const GLOSS_STORAGE_KEY = 'analytica-fidei-show-glosses';
 const VOWEL_STORAGE_KEY = 'analytica-fidei-show-hebrew-vowels';
 const CANTILLATION_STORAGE_KEY = 'analytica-fidei-show-hebrew-cantillation';
+const LANDMARK_STORAGE_KEY = 'analytica-fidei-show-grammatical-landmarks';
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
@@ -40,10 +42,12 @@ let showGlosses = false;
 try { showGlosses = localStorage.getItem(GLOSS_STORAGE_KEY) === 'true'; } catch { /* Optional preference. */ }
 let showHebrewVowels = true;
 let showHebrewCantillation = true;
+let showLandmarks = false;
 try {
   showHebrewVowels = localStorage.getItem(VOWEL_STORAGE_KEY) !== 'false';
   showHebrewCantillation = localStorage.getItem(CANTILLATION_STORAGE_KEY) !== 'false';
 } catch { /* Optional preferences. */ }
+try { showLandmarks = localStorage.getItem(LANDMARK_STORAGE_KEY) === 'true'; } catch { /* Optional preference. */ }
 
 let repository = null;
 let project = null;
@@ -233,6 +237,15 @@ function renderProject() {
   $('#toggle-glosses').disabled = !hasGlosses;
   $('#toggle-glosses').setAttribute('aria-pressed', String(hasGlosses && showGlosses));
   $('#toggle-glosses').textContent = !hasGlosses ? 'Glosses unavailable' : showGlosses ? 'Hide glosses' : 'Show glosses';
+  const landmarkMap = collectGrammaticalLandmarks(project);
+  const landmarkCount = [...landmarkMap.values()].filter(items => items.length).length;
+  $('#toggle-landmarks').disabled = !landmarkCount;
+  $('#toggle-landmarks').setAttribute('aria-pressed', String(landmarkCount > 0 && showLandmarks));
+  $('#toggle-landmarks').textContent = !landmarkCount ? 'Grammatical landmarks unavailable'
+    : showLandmarks ? 'Hide grammatical landmarks' : 'Show grammatical landmarks';
+  $('#landmark-coverage').textContent = landmarkCount
+    ? `${landmarkCount} source ${landmarkCount === 1 ? 'word has' : 'words have'} supplied or accepted landmarks.`
+    : 'No supplied part-of-speech landmarks or accepted connective anchors are available.';
   const hasVowels = unit.tokens.some(token => /[\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/u.test(token.text));
   const hasCantillation = unit.tokens.some(token => /[\u0591-\u05AF]/u.test(token.text));
   $('#toggle-vowels').disabled = !hasVowels;
@@ -291,7 +304,7 @@ function renderConstituentLibrary() {
 
 function renderCanvas() {
   const argumentTrace = traceArgument && focusedRelationId ? traceAnalysisArgument(project, focusedRelationId) : null;
-  canvas.render({ project, selectedTokens, selectedPropositions, selectedGroups, focusedRelationId, argumentTrace, showGlosses,
+  canvas.render({ project, selectedTokens, selectedPropositions, selectedGroups, focusedRelationId, argumentTrace, showGlosses, showLandmarks,
     showHebrewVowels, showHebrewCantillation });
   updateCanvasActions();
 }
@@ -442,6 +455,9 @@ $('#relation-legend-list').replaceChildren(...DISCOURSE_RELATION_TYPES.flatMap(i
   el('dt', { text: item.label }), el('dd', { text: `${item.description} From: ${item.sourceRole}; To: ${item.targetRole}.` }),
 ]));
 $('#note-category').replaceChildren(...ANALYSIS_NOTE_CATEGORIES.map(item => el('option', { value: item.id, text: item.label })));
+$('#landmark-legend-list').replaceChildren(...GRAMMATICAL_LANDMARK_TYPES.flatMap(item => [
+  el('dt', { text: `${item.symbol} ${item.label}` }), el('dd', { text: item.description }),
+]));
 $('#relation-type').addEventListener('change', updateRelationGuidance);
 $('#open-relation').addEventListener('click', () => {
   editingRelationId = null;
@@ -695,6 +711,12 @@ $('#toggle-glosses').addEventListener('click', () => {
   $('#toggle-glosses').textContent = showGlosses ? 'Hide glosses' : 'Show glosses';
   try { localStorage.setItem(GLOSS_STORAGE_KEY, String(showGlosses)); } catch { /* Keep the in-session layer. */ }
   renderCanvas();
+});
+$('#toggle-landmarks').addEventListener('click', () => {
+  showLandmarks = !showLandmarks;
+  try { localStorage.setItem(LANDMARK_STORAGE_KEY, String(showLandmarks)); } catch { /* Keep in session. */ }
+  renderProject();
+  report(showLandmarks ? 'Grammatical landmarks shown. Symbols and patterns supplement color.' : 'Grammatical landmarks hidden.');
 });
 function toggleHebrewLayer(key) {
   if (key === 'vowels') showHebrewVowels = !showHebrewVowels;

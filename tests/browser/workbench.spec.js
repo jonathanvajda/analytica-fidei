@@ -533,6 +533,29 @@ test('supplied lexical glosses form a persistent optional canvas layer', async (
   await expect(page.locator('.word-gloss')).toHaveText('word');
 });
 
+test('grammatical landmarks expose supplied finite verbs and connectives with redundant symbols', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);
+  const passage = { source: { sourceId: 'pos-fixture', version: '1', language: 'grc' }, unitKey: '1', text: 'λέγει οὖν λόγος',
+    records: [{ text: 'λέγει', start: 0, end: 5, pos: 'finite verb' }, { text: 'οὖν', start: 6, end: 9, pos: 'conjunction' },
+      { text: 'λόγος', start: 10, end: 15, pos: 'noun' }] };
+  await page.getByText('Practice texts & single-passage import', { exact: true }).click();
+  await page.locator('#project-name').fill('Landmark analysis');
+  await page.locator('#passage-file').setInputFiles({ name: 'pos.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(passage)) });
+  await page.getByRole('button', { name: 'Open settings' }).click();
+  await expect(page.getByRole('button', { name: 'Show grammatical landmarks' })).toBeEnabled();
+  await page.getByRole('button', { name: 'Show grammatical landmarks' }).click();
+  await expect(page.locator('.word-landmark')).toHaveCount(3);
+  await expect(page.locator('.word-landmark')).toHaveText(['V', '◇', 'N']);
+  await expect(page.locator('.canvas-word').first()).toHaveAttribute('aria-label', /Finite verb/);
+  await expect(page.locator('.landmark-finite-verb')).toHaveCSS('border-top-style', 'double');
+  await expect(page.locator('.landmark-connective')).toHaveCSS('border-bottom-style', 'dashed');
+  await page.getByText('Landmark legend', { exact: true }).click();
+  await expect(page.locator('#landmark-legend-list')).toContainText('Finite verb');
+  await page.getByRole('button', { name: 'Hide grammatical landmarks' }).click();
+  await expect(page.locator('.word-landmark')).toHaveCount(0);
+});
+
 test('invalid imports preserve the active analysis and imported markup is text', async ({ page }) => {
   await createPracticeProject(page);
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
