@@ -1,5 +1,6 @@
 import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisPropositionAnchor } from '../docs/js/core/project.js';
 import { collectGrammaticalLandmarks } from '../docs/js/core/grammatical-landmarks.js';
+import { suggestConnectiveCues } from '../docs/js/core/connective-suggestions.js';
 
 test('landmarks use supplied POS and accepted anchors without decoding unknown morphology', () => {
   const passage = { source: { sourceId: 'fixture', version: '1', language: 'grc' }, unitKey: '1', text: 'λέγει οὖν λόγος',
@@ -17,4 +18,26 @@ test('landmarks use supplied POS and accepted anchors without decoding unknown m
   expect(landmarks.get(ids[1]).map(item => item.type)).toEqual(['connective']);
   expect(landmarks.get(ids[2])).toEqual(expect.arrayContaining([{ type: 'noun', source: 'supplied', annotationId: expect.any(String) },
     { type: 'connective', source: 'accepted' }]));
+});
+
+test('versioned language lexicons emit proposals without accepting relationships', () => {
+  const passage = { source: { sourceId: 'fixture', version: '1', language: 'grc' }, unitKey: '1', text: 'οὖν λόγος',
+    records: [{ text: 'οὖν', start: 0, end: 3 }, { text: 'λόγος', start: 4, end: 9 }] };
+  const project = createAnalysisProject({ id: 'p', name: 'Suggested cues', passage });
+  const ids = adaptAnalysisPassage(passage).tokens.map(item => item.id);
+  const suggestions = suggestConnectiveCues(project);
+  expect(suggestions.get(ids[0])).toMatchObject({ function: 'result', status: 'proposed',
+    provenance: { providerId: 'analytica-fidei-connectives', version: '1' } });
+  expect(suggestions.has(ids[1])).toBe(false);
+  expect(collectGrammaticalLandmarks(project).get(ids[0])).toEqual(expect.arrayContaining([
+    expect.objectContaining({ type: 'connective', source: 'proposed', function: 'result' }),
+  ]));
+  expect(project.relations).toEqual([]);
+});
+
+test('connective proposals run only for a supported analysis language', () => {
+  const passage = { source: { sourceId: 'fixture', version: '1', language: 'hbo' }, unitKey: '1', text: 'οὖν',
+    records: [{ text: 'οὖν', start: 0, end: 3 }] };
+  const project = createAnalysisProject({ id: 'p', name: 'Unsupported language', passage });
+  expect(suggestConnectiveCues(project).size).toBe(0);
 });

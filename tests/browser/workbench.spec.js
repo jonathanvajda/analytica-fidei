@@ -573,6 +573,29 @@ test('grammatical landmarks expose supplied finite verbs and connectives with re
   await expect(page.locator('.word-landmark')).toHaveCount(0);
 });
 
+test('a lexical connective proposal is visibly draft and pre-fills review', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);
+  const passage = { source: { sourceId: 'cue-fixture', version: '1', language: 'grc' }, unitKey: '1', text: 'οὖν λόγος',
+    records: [{ text: 'οὖν', start: 0, end: 3 }, { text: 'λόγος', start: 4, end: 9 }] };
+  await page.getByText('Practice texts & single-passage import', { exact: true }).click();
+  await page.locator('#project-name').fill('Cue proposals');
+  await page.locator('#passage-file').setInputFiles({ name: 'cues.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(passage)) });
+  await page.getByRole('button', { name: 'Open settings' }).click();
+  await page.getByRole('button', { name: 'Show grammatical landmarks' }).click();
+  await expect(page.locator('.word-landmark.proposed')).toHaveText('◇');
+  await createProposition(page, 0, 2);
+  await page.locator('.canvas-word').first().click();
+  await selectPropositions(page, [1]);
+  await page.getByRole('button', { name: 'Anchor connective' }).click();
+  await expect(page.locator('#anchor-suggestion')).toContainText('Draft suggestion: result');
+  await expect(page.locator('#anchor-function')).toHaveValue('result');
+  await page.getByRole('button', { name: 'Add connective anchor' }).click();
+  await expect(page.locator('.semantic-badge.connective')).toContainText('result');
+  await expect(page.locator('.word-landmark.accepted')).toHaveCount(1);
+  await expect(page.locator('.word-landmark.proposed')).toHaveCount(0);
+});
+
 test('invalid imports preserve the active analysis and imported markup is text', async ({ page }) => {
   await createPracticeProject(page);
   await page.getByRole('button', { name: 'Projects', exact: true }).click();

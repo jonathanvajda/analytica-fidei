@@ -1,8 +1,9 @@
 import { adaptAnalysisPassage } from './project.js';
+import { suggestConnectiveCues } from './connective-suggestions.js';
 
 export const GRAMMATICAL_LANDMARK_TYPES = Object.freeze([
   { id: 'finite-verb', label: 'Finite verb', symbol: 'V', description: 'Supplied as a finite verbal form.' },
-  { id: 'connective', label: 'Connective cue', symbol: '◇', description: 'Supplied as a connective part of speech or accepted as a connective anchor.' },
+  { id: 'connective', label: 'Connective cue', symbol: '◇', description: 'Supplied as a connective part of speech, proposed by a language lexicon, or accepted as a connective anchor.' },
   { id: 'noun', label: 'Noun', symbol: 'N', description: 'Supplied nominal part of speech.' },
   { id: 'adjective', label: 'Adjective', symbol: 'A', description: 'Supplied adjectival part of speech.' },
   { id: 'adverb', label: 'Adverb', symbol: 'D', description: 'Supplied adverbial part of speech.' },
@@ -46,6 +47,13 @@ export function collectGrammaticalLandmarks(project) {
   for (const anchor of anchors) {
     const landmarks = byToken.get(anchor.tokenId);
     if (landmarks && !landmarks.some(item => item.type === 'connective')) landmarks.push({ type: 'connective', source: 'accepted' });
+  }
+  for (const suggestion of suggestConnectiveCues(project).values()) {
+    const landmarks = byToken.get(suggestion.tokenId);
+    if (landmarks && !landmarks.some(item => item.type === 'connective')) landmarks.push({
+      type: 'connective', source: 'proposed', function: suggestion.function,
+      explanation: suggestion.explanation, provenance: suggestion.provenance,
+    });
   }
   return byToken;
 }

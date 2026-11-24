@@ -17,6 +17,7 @@ import { createEditionLibrary, loadBundledEditionCatalog } from './adapters/edit
 import { normalizeEditionCorpus } from './core/editions.js';
 import { createAnalysisMermaid } from './core/mermaid-export.js';
 import { collectGrammaticalLandmarks, GRAMMATICAL_LANDMARK_TYPES } from './core/grammatical-landmarks.js';
+import { suggestConnectiveCues } from './core/connective-suggestions.js';
 import { createEditionBrowser } from './ui/edition-browser.js';
 
 const $ = selector => document.querySelector(selector);
@@ -254,8 +255,8 @@ function renderProject() {
   $('#toggle-landmarks').textContent = !landmarkCount ? 'Grammatical landmarks unavailable'
     : showLandmarks ? 'Hide grammatical landmarks' : 'Show grammatical landmarks';
   $('#landmark-coverage').textContent = landmarkCount
-    ? `${landmarkTotals.finite} finite · ${landmarkTotals.connective} connective · ${landmarkTotals.other} other supplied or accepted landmarks.`
-    : 'No supplied part-of-speech landmarks or accepted connective anchors are available.';
+    ? `${landmarkTotals.finite} finite · ${landmarkTotals.connective} connective · ${landmarkTotals.other} other supplied, proposed, or accepted landmarks.`
+    : 'No supplied part-of-speech landmarks, lexical connective proposals, or accepted connective anchors are available.';
   for (const key of ['finite', 'connective', 'other']) $(`#landmark-${key}`).checked = landmarkFilters[key];
   const hasVowels = unit.tokens.some(token => /[\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/u.test(token.text));
   const hasCantillation = unit.tokens.some(token => /[\u0591-\u05AF]/u.test(token.text));
@@ -373,11 +374,14 @@ function inspectCanvasWord(id) {
   const token = unit.tokens.find(item => item.id === id);
   const annotations = unit.annotations.filter(item => item.targetTokenId === id);
   const notes = (project.notes ?? []).filter(item => item.targetType === 'token' && item.targetId === id);
+  const connectiveSuggestion = suggestConnectiveCues(project).get(id);
   closeEditors(); showInspector(); $('#inspector-empty').hidden = true; $('#word-inspector').hidden = false;
   $('#word-details').replaceChildren(el('p', { text: `${token.text} · ${token.language}`, lang: token.language, dir: 'auto' }),
     ...(token.reference ? [el('p', { text: token.reference.display })] : []),
     ...annotations.map(item => el('p', { text: `${item.kind}: ${typeof item.value === 'string' ? item.value : JSON.stringify(item.value)} · ${item.scheme ?? 'unspecified scheme'} · ${item.status} · ${item.provenance.providerId}` })),
     ...(annotations.length ? [] : [el('p', { text: 'No lexical annotations supplied for this word.' })]),
+    ...(connectiveSuggestion ? [el('p', { className: 'connective-suggestion',
+      text: `Draft connective cue: ${connectiveSuggestion.function} · ${connectiveSuggestion.explanation} Review by anchoring it; no relationship has been inferred.` })] : []),
     ...notes.map(note => {
       const edit = el('button', { type: 'button', className: 'quiet', text: 'Edit', 'aria-label': 'Edit word note' });
       edit.addEventListener('click', () => openNoteEditor(note.id));
@@ -494,6 +498,8 @@ $('#relation-form').addEventListener('submit', event => {
 $('#open-anchor').addEventListener('click', () => {
   const tokenId = [...selectedTokens][0];
   const token = activeUnit().tokens.find(item => item.id === tokenId);
+  const suggestion = suggestConnectiveCues(project).get(tokenId);
+  $('#anchor-function').value = suggestion?.function ?? '';
   if (selectedPropositions.size === 1) {
     const propositionId = [...selectedPropositions][0];
     const number = project.propositions.findIndex(item => item.id === propositionId) + 1;
@@ -506,6 +512,9 @@ $('#open-anchor').addEventListener('click', () => {
     const relation = project.relations.find(item => item.id === focusedRelationId);
     $('#anchor-selection').textContent = `${token.text} → ${relation.label} relationship`;
   }
+  $('#anchor-suggestion').hidden = !suggestion;
+  $('#anchor-suggestion').textContent = suggestion
+    ? `Draft suggestion: ${suggestion.function}. ${suggestion.explanation} Confirm or choose another function.` : '';
   openCanvasEditor('#anchor-form');
 });
 $('#anchor-form').addEventListener('submit', event => {

@@ -100,7 +100,12 @@ There is no silent storage fallback advertised as a successful persistent save.
 2. **Connective-anchor refinement (UR-82):** basic inspector authoring and removal
    are implemented for propositions, discourse groups, and focused relationships.
    All are non-exclusive source-token cues and do not determine relationship type.
-   Next, add language-aware cue suggestions and freeform/extended functions.
+   A first UR-84 suggestion slice now uses a versioned Greek/English connective
+   lexicon to mark matches explicitly as draft, explain them in the Inspector, and
+   pre-fill (but never auto-submit) the anchor review form. Accepted anchors replace
+   their draft styling without creating or determining a discourse relationship.
+   Next, add lemma-aware and multiword rules, applicability conditions, rejection,
+   and freeform/extended functions.
 3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
    vocabulary with migration rules and RDF predicates. The controlled selector,
    accessible definitions, explicit From/To participant roles, reversal guidance,
