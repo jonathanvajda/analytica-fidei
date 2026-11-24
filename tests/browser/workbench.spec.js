@@ -550,8 +550,17 @@ test('grammatical landmarks expose supplied finite verbs and connectives with re
   await expect(page.locator('.canvas-word').first()).toHaveAttribute('aria-label', /Finite verb/);
   await expect(page.locator('.landmark-finite-verb')).toHaveCSS('border-top-style', 'double');
   await expect(page.locator('.landmark-connective')).toHaveCSS('border-bottom-style', 'dashed');
+  await page.getByLabel('Other parts of speech').uncheck();
+  await expect(page.locator('.word-landmark')).toHaveText(['V', '◇']);
+  await page.getByLabel('Connective cues').uncheck();
+  await expect(page.locator('.word-landmark')).toHaveText(['V']);
   await page.getByText('Landmark legend', { exact: true }).click();
   await expect(page.locator('#landmark-legend-list')).toContainText('Finite verb');
+  await page.reload();
+  await page.getByRole('button', { name: 'Landmark analysis', exact: true }).click();
+  await expect(page.locator('.word-landmark')).toHaveText(['V']);
+  await page.getByRole('button', { name: 'Open settings' }).click();
+  await expect(page.getByLabel('Connective cues')).not.toBeChecked();
   await page.getByRole('button', { name: 'Hide grammatical landmarks' }).click();
   await expect(page.locator('.word-landmark')).toHaveCount(0);
 });

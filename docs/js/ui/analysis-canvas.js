@@ -73,7 +73,9 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function renderWord(word, block) {
     const gloss = state.showGlosses ? model.unit.annotations.find(item => item.kind === 'gloss' && item.targetTokenId === word.id && item.status !== 'unavailable') : null;
-    const wordLandmarks = state.showLandmarks ? landmarks.get(word.id) ?? [] : [];
+    const visibleLandmark = item => item.type === 'finite-verb' ? state.landmarkFilters.finite
+      : item.type === 'connective' ? state.landmarkFilters.connective : state.landmarkFilters.other;
+    const wordLandmarks = state.showLandmarks ? (landmarks.get(word.id) ?? []).filter(visibleLandmark) : [];
     const landmarkNames = wordLandmarks.map(item => GRAMMATICAL_LANDMARK_TYPES.find(type => type.id === item.type)?.label).filter(Boolean);
     const button = el('button', { type: 'button', className: `token canvas-word${gloss ? ' has-gloss' : ''}${wordLandmarks.map(item => ` landmark-${item.type}`).join('')}`,
       lang: word.language, dir: 'auto', 'data-token-id': word.id, 'data-column': word.column, 'data-row': word.row,

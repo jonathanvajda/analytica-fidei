@@ -130,8 +130,9 @@ There is no silent storage fallback advertised as a successful persistent save.
    tokens or accepted grammatical roles.
    The first slice is implemented for explicit supplied POS values and accepted
    connective anchors, with a persistent toggle, coverage message, accessible names,
-   redundant glyph/pattern styling, and a legend. Morphology-scheme decoders and
-   independently selectable landmark subsets remain future work.
+   redundant glyph/pattern styling, a legend, coverage counts, and independently
+   selectable finite-verb, connective, and other-POS layers. Morphology-scheme
+   decoders and finer-grained POS filters remain future work.
 
 8. **Hierarchical semantic snapping (UR-22–26, UR-40, UR-42, UR-58, UR-78, UR-86):**
    extend the current token grid into word-to-phrase, phrase-to-head, and

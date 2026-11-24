@@ -25,6 +25,7 @@ const GLOSS_STORAGE_KEY = 'analytica-fidei-show-glosses';
 const VOWEL_STORAGE_KEY = 'analytica-fidei-show-hebrew-vowels';
 const CANTILLATION_STORAGE_KEY = 'analytica-fidei-show-hebrew-cantillation';
 const LANDMARK_STORAGE_KEY = 'analytica-fidei-show-grammatical-landmarks';
+const LANDMARK_FILTER_STORAGE_KEY = 'analytica-fidei-grammatical-landmark-filters';
 
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
@@ -43,11 +44,16 @@ try { showGlosses = localStorage.getItem(GLOSS_STORAGE_KEY) === 'true'; } catch 
 let showHebrewVowels = true;
 let showHebrewCantillation = true;
 let showLandmarks = false;
+let landmarkFilters = { finite: true, connective: true, other: true };
 try {
   showHebrewVowels = localStorage.getItem(VOWEL_STORAGE_KEY) !== 'false';
   showHebrewCantillation = localStorage.getItem(CANTILLATION_STORAGE_KEY) !== 'false';
 } catch { /* Optional preferences. */ }
 try { showLandmarks = localStorage.getItem(LANDMARK_STORAGE_KEY) === 'true'; } catch { /* Optional preference. */ }
+try {
+  const saved = JSON.parse(localStorage.getItem(LANDMARK_FILTER_STORAGE_KEY));
+  if (saved && ['finite', 'connective', 'other'].every(key => typeof saved[key] === 'boolean')) landmarkFilters = saved;
+} catch { /* Optional preference. */ }
 
 let repository = null;
 let project = null;
@@ -239,13 +245,18 @@ function renderProject() {
   $('#toggle-glosses').textContent = !hasGlosses ? 'Glosses unavailable' : showGlosses ? 'Hide glosses' : 'Show glosses';
   const landmarkMap = collectGrammaticalLandmarks(project);
   const landmarkCount = [...landmarkMap.values()].filter(items => items.length).length;
+  const landmarkTotals = [...landmarkMap.values()].flat().reduce((counts, item) => {
+    const key = item.type === 'finite-verb' ? 'finite' : item.type === 'connective' ? 'connective' : 'other';
+    counts[key] += 1; return counts;
+  }, { finite: 0, connective: 0, other: 0 });
   $('#toggle-landmarks').disabled = !landmarkCount;
   $('#toggle-landmarks').setAttribute('aria-pressed', String(landmarkCount > 0 && showLandmarks));
   $('#toggle-landmarks').textContent = !landmarkCount ? 'Grammatical landmarks unavailable'
     : showLandmarks ? 'Hide grammatical landmarks' : 'Show grammatical landmarks';
   $('#landmark-coverage').textContent = landmarkCount
-    ? `${landmarkCount} source ${landmarkCount === 1 ? 'word has' : 'words have'} supplied or accepted landmarks.`
+    ? `${landmarkTotals.finite} finite · ${landmarkTotals.connective} connective · ${landmarkTotals.other} other supplied or accepted landmarks.`
     : 'No supplied part-of-speech landmarks or accepted connective anchors are available.';
+  for (const key of ['finite', 'connective', 'other']) $(`#landmark-${key}`).checked = landmarkFilters[key];
   const hasVowels = unit.tokens.some(token => /[\u05B0-\u05BD\u05BF\u05C1\u05C2\u05C4\u05C5\u05C7]/u.test(token.text));
   const hasCantillation = unit.tokens.some(token => /[\u0591-\u05AF]/u.test(token.text));
   $('#toggle-vowels').disabled = !hasVowels;
@@ -304,7 +315,7 @@ function renderConstituentLibrary() {
 
 function renderCanvas() {
   const argumentTrace = traceArgument && focusedRelationId ? traceAnalysisArgument(project, focusedRelationId) : null;
-  canvas.render({ project, selectedTokens, selectedPropositions, selectedGroups, focusedRelationId, argumentTrace, showGlosses, showLandmarks,
+  canvas.render({ project, selectedTokens, selectedPropositions, selectedGroups, focusedRelationId, argumentTrace, showGlosses, showLandmarks, landmarkFilters,
     showHebrewVowels, showHebrewCantillation });
   updateCanvasActions();
 }
@@ -717,6 +728,12 @@ $('#toggle-landmarks').addEventListener('click', () => {
   try { localStorage.setItem(LANDMARK_STORAGE_KEY, String(showLandmarks)); } catch { /* Keep in session. */ }
   renderProject();
   report(showLandmarks ? 'Grammatical landmarks shown. Symbols and patterns supplement color.' : 'Grammatical landmarks hidden.');
+});
+for (const key of ['finite', 'connective', 'other']) $(`#landmark-${key}`).addEventListener('change', event => {
+  landmarkFilters = { ...landmarkFilters, [key]: event.target.checked };
+  try { localStorage.setItem(LANDMARK_FILTER_STORAGE_KEY, JSON.stringify(landmarkFilters)); } catch { /* Keep in session. */ }
+  renderCanvas();
+  report('Grammatical landmark layers updated.');
 });
 function toggleHebrewLayer(key) {
   if (key === 'vowels') showHebrewVowels = !showHebrewVowels;
