@@ -24,14 +24,23 @@ function lookupForm(text) {
 }
 
 /** Return reviewable lexical cues without changing the accepted analysis. */
-export function suggestConnectiveCues(project) {
+export function suggestConnectiveCues(project, { includeRejected = false } = {}) {
   const unit = adaptAnalysisPassage(project.passage);
   const language = unit.source.language.toLowerCase().split('-')[0];
   const entries = CONNECTIVE_LEXICON.entries[language];
   if (!entries) return new Map();
+  const acceptedTokenIds = new Set([
+    ...project.propositions.flatMap(item => item.anchors ?? []),
+    ...project.groups.flatMap(item => item.anchors ?? []),
+    ...project.relations.flatMap(item => item.anchors ?? []),
+  ].map(item => item.tokenId));
   return new Map(unit.tokens.flatMap(token => {
     const match = entries[lookupForm(token.text)];
-    return match ? [[token.id, { tokenId: token.id, ...match, status: 'proposed',
-      provenance: { providerId: CONNECTIVE_LEXICON.id, version: CONNECTIVE_LEXICON.version } }]] : [];
+    if (!match) return [];
+    const rejected = (project.proposalReviews ?? []).some(item => item.kind === 'connective-cue' && item.tokenId === token.id
+      && item.providerId === CONNECTIVE_LEXICON.id && item.version === CONNECTIVE_LEXICON.version && item.status === 'rejected');
+    const status = acceptedTokenIds.has(token.id) ? 'accepted' : rejected ? 'rejected' : 'proposed';
+    return rejected && !includeRejected ? [] : [[token.id, { tokenId: token.id, ...match, status,
+      provenance: { providerId: CONNECTIVE_LEXICON.id, version: CONNECTIVE_LEXICON.version } }]];
   }));
 }

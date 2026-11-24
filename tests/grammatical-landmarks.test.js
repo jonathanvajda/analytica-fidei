@@ -1,4 +1,5 @@
-import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisPropositionAnchor } from '../docs/js/core/project.js';
+import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, addAnalysisPropositionAnchor,
+  rejectAnalysisProposal, restoreAnalysisProposal, restoreAnalysisProject } from '../docs/js/core/project.js';
 import { collectGrammaticalLandmarks } from '../docs/js/core/grammatical-landmarks.js';
 import { suggestConnectiveCues } from '../docs/js/core/connective-suggestions.js';
 
@@ -40,4 +41,19 @@ test('connective proposals run only for a supported analysis language', () => {
     records: [{ text: 'οὖν', start: 0, end: 3 }] };
   const project = createAnalysisProject({ id: 'p', name: 'Unsupported language', passage });
   expect(suggestConnectiveCues(project).size).toBe(0);
+});
+
+test('connective proposal rejection persists and remains reversible', () => {
+  const passage = { source: { sourceId: 'fixture', version: '1', language: 'en' }, unitKey: '1', text: 'Therefore listen',
+    records: [{ text: 'Therefore', start: 0, end: 9 }, { text: 'listen', start: 10, end: 16 }] };
+  let project = createAnalysisProject({ id: 'p', name: 'Proposal review', passage });
+  const tokenId = adaptAnalysisPassage(passage).tokens[0].id;
+  const review = { kind: 'connective-cue', tokenId, providerId: 'analytica-fidei-connectives', version: '1' };
+  project = rejectAnalysisProposal(project, review);
+  expect(suggestConnectiveCues(project).has(tokenId)).toBe(false);
+  expect(suggestConnectiveCues(project, { includeRejected: true }).get(tokenId).status).toBe('rejected');
+  project = restoreAnalysisProject(JSON.parse(JSON.stringify(project)));
+  expect(project.proposalReviews).toEqual([{ ...review, status: 'rejected' }]);
+  project = restoreAnalysisProposal(project, review);
+  expect(suggestConnectiveCues(project).get(tokenId).status).toBe('proposed');
 });

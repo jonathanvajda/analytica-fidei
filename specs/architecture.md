@@ -104,8 +104,9 @@ There is no silent storage fallback advertised as a successful persistent save.
    lexicon to mark matches explicitly as draft, explain them in the Inspector, and
    pre-fill (but never auto-submit) the anchor review form. Accepted anchors replace
    their draft styling without creating or determining a discourse relationship.
-   Next, add lemma-aware and multiword rules, applicability conditions, rejection,
-   and freeform/extended functions.
+   False positives can be dismissed, persist as provenance-specific rejected reviews,
+   and be restored or undone. Next, add lemma-aware and multiword rules,
+   applicability conditions, and freeform/extended functions.
 3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
    vocabulary with migration rules and RDF predicates. The controlled selector,
    accessible definitions, explicit From/To participant roles, reversal guidance,

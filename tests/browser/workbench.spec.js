@@ -584,6 +584,13 @@ test('a lexical connective proposal is visibly draft and pre-fills review', asyn
   await page.getByRole('button', { name: 'Open settings' }).click();
   await page.getByRole('button', { name: 'Show grammatical landmarks' }).click();
   await expect(page.locator('.word-landmark.proposed')).toHaveText('◇');
+  await page.locator('.canvas-word').first().click();
+  await page.getByRole('button', { name: 'Dismiss suggestion' }).click();
+  await expect(page.locator('.word-landmark.proposed')).toHaveCount(0);
+  await expect(page.locator('#feedback')).toContainText('suggestion dismissed');
+  await page.getByRole('button', { name: 'Restore suggestion' }).click();
+  await expect(page.locator('.word-landmark.proposed')).toHaveText('◇');
+  await page.getByRole('button', { name: 'Clear', exact: true }).click();
   await createProposition(page, 0, 2);
   await page.locator('.canvas-word').first().click();
   await selectPropositions(page, [1]);

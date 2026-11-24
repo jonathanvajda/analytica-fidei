@@ -7,7 +7,8 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   attachAnalysisConstituent, detachAnalysisConstituent,
   MODIFIER_FUNCTIONS, addAnalysisDependency, updateAnalysisDependency, removeAnalysisDependency,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
-  updateAnalysisRelation, removeAnalysisRelation, traceAnalysisArgument } from './core/project.js';
+  updateAnalysisRelation, removeAnalysisRelation, traceAnalysisArgument,
+  rejectAnalysisProposal, restoreAnalysisProposal } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -374,14 +375,32 @@ function inspectCanvasWord(id) {
   const token = unit.tokens.find(item => item.id === id);
   const annotations = unit.annotations.filter(item => item.targetTokenId === id);
   const notes = (project.notes ?? []).filter(item => item.targetType === 'token' && item.targetId === id);
-  const connectiveSuggestion = suggestConnectiveCues(project).get(id);
+  const connectiveSuggestion = suggestConnectiveCues(project, { includeRejected: true }).get(id);
   closeEditors(); showInspector(); $('#inspector-empty').hidden = true; $('#word-inspector').hidden = false;
   $('#word-details').replaceChildren(el('p', { text: `${token.text} · ${token.language}`, lang: token.language, dir: 'auto' }),
     ...(token.reference ? [el('p', { text: token.reference.display })] : []),
     ...annotations.map(item => el('p', { text: `${item.kind}: ${typeof item.value === 'string' ? item.value : JSON.stringify(item.value)} · ${item.scheme ?? 'unspecified scheme'} · ${item.status} · ${item.provenance.providerId}` })),
     ...(annotations.length ? [] : [el('p', { text: 'No lexical annotations supplied for this word.' })]),
-    ...(connectiveSuggestion ? [el('p', { className: 'connective-suggestion',
-      text: `Draft connective cue: ${connectiveSuggestion.function} · ${connectiveSuggestion.explanation} Review by anchoring it; no relationship has been inferred.` })] : []),
+    ...(connectiveSuggestion ? [el('div', { className: 'connective-suggestion' }, [
+      el('p', { text: connectiveSuggestion.status === 'rejected'
+        ? `Dismissed connective suggestion: ${connectiveSuggestion.function} · ${connectiveSuggestion.explanation}`
+        : connectiveSuggestion.status === 'accepted'
+          ? `Accepted connective cue: ${connectiveSuggestion.function} · The lexical proposal has been reviewed and anchored.`
+        : `Draft connective cue: ${connectiveSuggestion.function} · ${connectiveSuggestion.explanation} Review by anchoring it; no relationship has been inferred.` }),
+      ...(connectiveSuggestion.status === 'accepted' ? [] : [(() => {
+        const rejected = connectiveSuggestion.status === 'rejected';
+        const button = el('button', { type: 'button', className: 'quiet',
+          text: rejected ? 'Restore suggestion' : 'Dismiss suggestion' });
+        button.addEventListener('click', () => runUiOperation(async () => {
+          const review = { kind: 'connective-cue', tokenId: id,
+            providerId: connectiveSuggestion.provenance.providerId, version: connectiveSuggestion.provenance.version };
+          await persistProject(rejected ? restoreAnalysisProposal(project, review) : rejectAnalysisProposal(project, review));
+          inspectCanvasWord(id);
+          report(rejected ? 'Connective suggestion restored for review.' : 'Connective suggestion dismissed. Use Undo or Restore suggestion to reconsider it.');
+        }));
+        return button;
+      })()]),
+    ])] : []),
     ...notes.map(note => {
       const edit = el('button', { type: 'button', className: 'quiet', text: 'Edit', 'aria-label': 'Edit word note' });
       edit.addEventListener('click', () => openNoteEditor(note.id));

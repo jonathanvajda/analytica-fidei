@@ -10,7 +10,7 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{id:string,targetType:'token'|'proposition'|'relation'|'constituent',targetId:string,text:string}} AnalysisNote */
 /** @typedef {{id:string, propositionIds:string[], label:string, anchors?:AnalysisAnchor[]}} AnalysisGroup */
 /** @typedef {{id:string, from:string, to:string, label:string, type?:string, anchors?:AnalysisAnchor[]}} AnalysisRelation */
-/** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], dependencies:AnalysisDependency[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
+/** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], dependencies:AnalysisDependency[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], proposalReviews?:object[], layout?:{columns:number,words:object}}} AnalysisProject */
 export function requireAnalysisCondition(condition, message) {
   if (!condition) throw new Error(message);
 }
@@ -54,7 +54,7 @@ export function createAnalysisProject({ id, name, passage }) {
   requireAnalysisCondition(typeof name === 'string' && name.trim(), 'Give the project a name.');
   adaptAnalysisPassage(passage);
   return { schemaVersion: 1, id, name: name.trim(), passage: structuredClone(passage),
-    propositions: [], constituents: [], dependencies: [], groups: [], relations: [], notes: [] };
+    propositions: [], constituents: [], dependencies: [], groups: [], relations: [], notes: [], proposalReviews: [] };
 }
 
 /** Restore through the same commands used for editing; reject invalid imports atomically.
@@ -87,10 +87,31 @@ export function restoreAnalysisProject(value) {
       { relationId: relation.id, ...anchor });
   }
   for (const note of value.notes ?? []) project = addAnalysisNote(project, note);
+  for (const review of value.proposalReviews ?? []) project = rejectAnalysisProposal(project, review);
   // Old v1 backups have no layout. Keep their semantic content and derive initial placement.
   if (value.layout === undefined) return project;
   const tokenIds = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
   return { ...project, layout: normalizeAnalysisPresentation(value.layout, tokenIds) };
+}
+
+/** Persist rejection of a versioned automatic proposal without altering source or accepted analysis. */
+export function rejectAnalysisProposal(project, { kind, tokenId, providerId, version }) {
+  requireAnalysisCondition(kind === 'connective-cue', 'Choose a supported proposal kind.');
+  requireAnalysisCondition(adaptAnalysisPassage(project.passage).tokens.some(item => item.id === tokenId), 'Choose a known proposal token.');
+  requireAnalysisCondition(typeof providerId === 'string' && providerId.trim() && typeof version === 'string' && version.trim(),
+    'Proposal review requires identified provenance.');
+  const reviews = project.proposalReviews ?? [];
+  requireAnalysisCondition(!reviews.some(item => item.kind === kind && item.tokenId === tokenId
+    && item.providerId === providerId && item.version === version), 'That proposal is already rejected.');
+  return { ...project, proposalReviews: [...reviews, { kind, tokenId, providerId, version, status: 'rejected' }] };
+}
+
+/** Remove a rejection so the current version of the proposal can be reviewed again. */
+export function restoreAnalysisProposal(project, { kind, tokenId, providerId, version }) {
+  const reviews = project.proposalReviews ?? [];
+  const matches = item => item.kind === kind && item.tokenId === tokenId && item.providerId === providerId && item.version === version;
+  requireAnalysisCondition(reviews.some(matches), 'Choose a rejected proposal to restore.');
+  return { ...project, proposalReviews: reviews.filter(item => !matches(item)) };
 }
 
 /** Add a contiguous, unassigned token span without changing source order or text.

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'analytica-fidei-v7';
+const CACHE_NAME = 'analytica-fidei-v8';
 const SHELL_ASSETS = [
   './', './index.html', './guide.html', './manifest.webmanifest',
   './css/typography.css', './css/workbench.css',
