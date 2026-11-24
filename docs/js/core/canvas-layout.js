@@ -78,7 +78,10 @@ export function computeAnalysisCanvas(project, { tokenWidths = {} } = {}) {
   for (const block of blocks) {
     block.rtl = /^(hbo|he|arc)(-|$)/.test(unit.source.language);
     block.starts = groups.filter(group => group.propositionIds[0] === block.id).sort((a, b) => a.depth - b.depth);
-    block.relations = project.relations.filter(relation => relation.from === block.id);
+    block.relations = project.relations.filter(relation => {
+      const sourceGroup = project.groups.find(group => group.id === relation.from);
+      return (sourceGroup?.propositionIds[0] ?? relation.from) === block.id;
+    });
     block.top = cursorY;
     block.headingY = cursorY + block.starts.length * 30;
     block.wordY = block.headingY + 32 + (block.relations.length ? 34 : 0);

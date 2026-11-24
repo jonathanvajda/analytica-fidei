@@ -88,20 +88,24 @@ There is no silent storage fallback advertised as a successful persistent save.
    reference it. Next, add role-specific validation, multiword phrase structure,
    and dependency targets.
 2. **Connective-anchor refinement (UR-82):** basic inspector authoring and removal
-   are implemented for propositions and focused discourse relationships. Both are
-   non-exclusive source-token cues and do not determine the relationship type. Next,
-   add language-aware cue suggestions, freeform/extended functions, and segment-level
-   anchors.
+   are implemented for propositions, discourse groups, and focused relationships.
+   All are non-exclusive source-token cues and do not determine relationship type.
+   Next, add language-aware cue suggestions and freeform/extended functions.
 3. **Relationship vocabulary completion (UR-33, UR-57):** extend the initial UI
-   vocabulary with inverse-direction guidance, migration rules, and RDF predicates.
-   The controlled selector, accessible vocabulary definitions, direction explanation,
-   and stable-ID editing of a relationship's type and endpoints are implemented.
+   vocabulary with migration rules and RDF predicates. The controlled selector,
+   accessible definitions, explicit From/To participant roles, reversal guidance,
+   and stable-ID editing of type and endpoints are implemented.
 4. **Grammatical-note refinement (UR-30):** basic word-anchored and
    proposition-anchored notes are implemented through the validated command/history
    path. Stable-ID text editing is implemented for both targets. Next, add
-   optional note categories and provenance when automated or imported annotations
-   are introduced. Constituent- and relationship-targeted notes are implemented with
-   stable-ID editing and lifecycle cleanup.
+   provenance when automated or imported annotations are introduced. Controlled
+   categories and word-, proposition-, constituent-, and relationship-targeted notes
+   are implemented with stable-ID editing and lifecycle cleanup.
+
+5. **Segment relationships (UR-55):** discourse groups are selectable semantic
+   endpoints alongside propositions. Mixed proposition/group and group/group edges
+   participate in editing, tracing, deletion cleanup, backup restore, and Mermaid
+   export while ordered group membership remains a separate property.
 
 1. Identify the actual SBLGNT input files and release/license manifests. Build corpus
    loaders and a coverage-aware edition registry using the shared Greek and OSHB

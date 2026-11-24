@@ -1,6 +1,7 @@
 import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, addAnalysisProposition,
-  removeAnalysisProposition, addAnalysisGroup, updateAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
-  DISCOURSE_RELATION_TYPES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
+  removeAnalysisProposition, addAnalysisGroup, updateAnalysisGroup, removeAnalysisGroup, addAnalysisRelation, addAnalysisTokenToProposition,
+  DISCOURSE_RELATION_TYPES, ANALYSIS_NOTE_CATEGORIES, addAnalysisPropositionAnchor, removeAnalysisPropositionAnchor,
+  addAnalysisGroupAnchor, removeAnalysisGroupAnchor,
   addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, detachAnalysisConstituent,
@@ -47,6 +48,7 @@ let repository = null;
 let project = null;
 let selectedTokens = new Set();
 let selectedPropositions = new Set();
+let selectedGroups = new Set();
 let selectionAnchor = null;
 let focusedRelationId = null;
 let traceArgument = false;
@@ -115,7 +117,7 @@ async function persistProject(next, { history = true } = {}) {
 }
 
 async function activateProject(next) {
-  selectedTokens.clear(); selectedPropositions.clear(); selectionAnchor = null; focusedRelationId = null; traceArgument = false;
+  selectedTokens.clear(); selectedPropositions.clear(); selectedGroups.clear(); selectionAnchor = null; focusedRelationId = null; traceArgument = false;
   undoStack = []; redoStack = []; closeEditors(); closeSettings();
   if (!next.layout) {
     const available = $('#main-content').getBoundingClientRect().width - 32;
@@ -161,6 +163,11 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
     updateCanvasActions();
     if (checked) { closeEditors(); showInspector(); }
   },
+  onToggleGroup: (id, checked) => {
+    if (checked) selectedGroups.add(id); else selectedGroups.delete(id);
+    updateCanvasActions();
+    if (checked) { closeEditors(); showInspector(); }
+  },
   onRemoveProposition: id => runUiOperation(async () => {
     selectedPropositions.delete(id); focusedRelationId = null;
     await persistProject(removeAnalysisProposition(project, id));
@@ -175,8 +182,9 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
     openCanvasEditor('#group-form');
   },
   onRemoveGroup: id => runUiOperation(async () => {
-    await persistProject({ ...project, groups: project.groups.filter(item => item.id !== id) });
-    report('Group removed. Propositions and relationships were retained.');
+    selectedGroups.delete(id);
+    await persistProject(removeAnalysisGroup(project, id));
+    report('Group removed. Its propositions and unrelated relationships were retained.');
   }),
   onRemovePropositionAnchor: (propositionId, tokenId) => runUiOperation(async () => {
     await persistProject(removeAnalysisPropositionAnchor(project, { propositionId, tokenId }));
@@ -193,6 +201,10 @@ const canvas = createAnalysisCanvasController({ root: $('#analysis-canvas'), vie
   onRemoveRelationAnchor: (relationId, tokenId) => runUiOperation(async () => {
     await persistProject(removeAnalysisRelationAnchor(project, { relationId, tokenId }));
     report('Relationship connective anchor removed. The source word and relationship were retained.');
+  }),
+  onRemoveGroupAnchor: (groupId, tokenId) => runUiOperation(async () => {
+    await persistProject(removeAnalysisGroupAnchor(project, { groupId, tokenId }));
+    report('Group connective anchor removed. The source word and group were retained.');
   }),
   onFocusRelation: id => { focusedRelationId = focusedRelationId === id ? null : id; traceArgument = false; renderCanvas(); },
 });
@@ -260,7 +272,7 @@ function renderConstituentLibrary() {
         removeNote.addEventListener('click', () => runUiOperation(async () => {
           await persistProject(removeAnalysisNote(project, note.id)); report('Analysis note removed.');
         }));
-        return el('span', { className: 'semantic-badge note', title: note.text }, [el('span', { text: note.text }), edit, removeNote]);
+        return el('span', { className: 'semantic-badge note', title: note.text }, [el('span', { text: `${note.category ?? 'general'}: ${note.text}` }), edit, removeNote]);
       });
     return el('div', { className: 'constituent-item' }, [
       el('p', { text: constituent.label || sourceText }),
@@ -273,7 +285,7 @@ function renderConstituentLibrary() {
 
 function renderCanvas() {
   const argumentTrace = traceArgument && focusedRelationId ? traceAnalysisArgument(project, focusedRelationId) : null;
-  canvas.render({ project, selectedTokens, selectedPropositions, focusedRelationId, argumentTrace, showGlosses,
+  canvas.render({ project, selectedTokens, selectedPropositions, selectedGroups, focusedRelationId, argumentTrace, showGlosses,
     showHebrewVowels, showHebrewCantillation });
   updateCanvasActions();
 }
@@ -282,13 +294,15 @@ function updateCanvasActions() {
   const selectionParts = [];
   if (selectedTokens.size) selectionParts.push(`${selectedTokens.size} ${selectedTokens.size === 1 ? 'word' : 'words'}`);
   if (selectedPropositions.size) selectionParts.push(`${selectedPropositions.size} ${selectedPropositions.size === 1 ? 'proposition' : 'propositions'}`);
+  if (selectedGroups.size) selectionParts.push(`${selectedGroups.size} ${selectedGroups.size === 1 ? 'group' : 'groups'}`);
   $('#selection-count').textContent = selectionParts.length ? `${selectionParts.join(' · ')} selected` : 'Select words or propositions on the canvas';
   $('#add-proposition').disabled = !selectedTokens.size;
   const selectedOwners = new Set([...selectedTokens].map(id => project.propositions.find(item => item.tokenIds.includes(id))?.id));
   $('#return-source').disabled = !selectedTokens.size || selectedOwners.size !== 1 || selectedOwners.has(undefined);
   $('#open-group').disabled = selectedPropositions.size < 2;
-  $('#open-relation').disabled = selectedPropositions.size !== 2;
-  $('#open-anchor').disabled = selectedTokens.size !== 1 || (selectedPropositions.size !== 1 && !focusedRelationId);
+  $('#open-relation').disabled = selectedPropositions.size + selectedGroups.size !== 2;
+  $('#open-anchor').disabled = selectedTokens.size !== 1
+    || (selectedPropositions.size !== 1 && selectedGroups.size !== 1 && !focusedRelationId);
   $('#open-role').disabled = selectedPropositions.size !== 1 || (!selectedTokens.size && !project.constituents.length);
   $('#open-note').disabled = !((selectedTokens.size === 1 && selectedPropositions.size === 0) ||
     (selectedTokens.size === 0 && selectedPropositions.size === 1));
@@ -336,7 +350,7 @@ function inspectCanvasWord(id) {
       remove.addEventListener('click', () => runUiOperation(async () => {
         await persistProject(removeAnalysisNote(project, note.id)); report('Analysis note removed.');
       }));
-      return el('div', { className: 'inspector-note' }, [el('p', { text: note.text }), edit, remove]);
+      return el('div', { className: 'inspector-note' }, [el('p', { text: `${note.category ?? 'general'}: ${note.text}` }), edit, remove]);
     }),
     el('p', { className: 'subtle', text: `Source: ${unit.source.sourceId} · ${unit.source.version}` }),
     ...(project.passage.resources ?? []).map(resource => el('p', { className: 'small subtle', text: `${resource.kind}: ${resource.license} · ${resource.attribution}` })));
@@ -358,7 +372,7 @@ $('#create-project').addEventListener('submit', event => {
   });
 });
 
-$('#clear-selection').addEventListener('click', () => { selectedTokens.clear(); selectedPropositions.clear(); selectionAnchor = null; closeEditors(); renderCanvas(); });
+$('#clear-selection').addEventListener('click', () => { selectedTokens.clear(); selectedPropositions.clear(); selectedGroups.clear(); selectionAnchor = null; closeEditors(); renderCanvas(); });
 $('#add-proposition').addEventListener('click', () => runUiOperation(async () => {
   const tokenIds = activeUnit().tokens.filter(token => selectedTokens.has(token.id)).map(token => token.id);
   const next = addAnalysisProposition(project, { id: crypto.randomUUID(), tokenIds });
@@ -394,27 +408,32 @@ $('#group-form').addEventListener('submit', event => {
 });
 
 function configureRelationForm(relation = null) {
-  const selected = relation ? [relation.from, relation.to] : [...selectedPropositions];
+  const selected = relation ? [relation.from, relation.to] : [...selectedPropositions, ...selectedGroups];
+  const endpointOptions = [
+    ...project.propositions.map((item, index) => el('option', { value: item.id, text: `P${index + 1} · Proposition` })),
+    ...project.groups.map((item, index) => el('option', { value: item.id, text: `G${index + 1} · ${item.label || 'Discourse group'}` })),
+  ];
   for (const [selector, id] of [['#relation-from', selected[0]], ['#relation-to', selected[1]]]) {
-    $(selector).replaceChildren(...project.propositions.map((item, index) => el('option', { value: item.id, text: `P${index + 1}` })));
+    $(selector).replaceChildren(...endpointOptions.map(option => option.cloneNode(true)));
     $(selector).value = id;
   }
   $('#relation-type').replaceChildren(el('option', { value: '', text: 'Choose a relationship' }),
     ...DISCOURSE_RELATION_TYPES.map(item => el('option', { value: item.id, text: item.label, title: item.description })));
   $('#relation-type').value = relation?.type ?? '';
   updateRelationGuidance();
-  $('#relation-form-title').textContent = relation ? 'Edit discourse relationship' : 'Connect propositions';
+  $('#relation-form-title').textContent = relation ? 'Edit discourse relationship' : 'Connect analysis units';
   $('#save-relation').textContent = relation ? 'Save relationship' : 'Add relation';
 }
 function updateRelationGuidance() {
   const type = DISCOURSE_RELATION_TYPES.find(item => item.id === $('#relation-type').value);
   $('#relation-description').textContent = type
-    ? `${type.label}: ${type.description} “From” is the ${type.label.toLowerCase()} proposition; “To” is what it relates to.`
+    ? `${type.label}: ${type.description} From = ${type.sourceRole}; To = ${type.targetRole}. Reverse the endpoints if those participant roles are backwards.`
     : 'Choose a relationship to see its definition.';
 }
 $('#relation-legend-list').replaceChildren(...DISCOURSE_RELATION_TYPES.flatMap(item => [
-  el('dt', { text: item.label }), el('dd', { text: item.description }),
+  el('dt', { text: item.label }), el('dd', { text: `${item.description} From: ${item.sourceRole}; To: ${item.targetRole}.` }),
 ]));
+$('#note-category').replaceChildren(...ANALYSIS_NOTE_CATEGORIES.map(item => el('option', { value: item.id, text: item.label })));
 $('#relation-type').addEventListener('change', updateRelationGuidance);
 $('#open-relation').addEventListener('click', () => {
   editingRelationId = null;
@@ -430,7 +449,8 @@ $('#relation-form').addEventListener('submit', event => {
     const revised = Boolean(editingRelationId);
     editingRelationId = null;
     focusedRelationId = id; $('#relation-type').value = ''; closeEditors();
-    await persistProject(next); report(revised ? 'Discourse relationship updated.' : 'Directed relationship added beside its proposition.');
+    selectedGroups.clear(); selectedPropositions.clear();
+    await persistProject(next); report(revised ? 'Discourse relationship updated.' : 'Directed relationship added between the selected analysis units.');
   });
 });
 $('#open-anchor').addEventListener('click', () => {
@@ -440,6 +460,10 @@ $('#open-anchor').addEventListener('click', () => {
     const propositionId = [...selectedPropositions][0];
     const number = project.propositions.findIndex(item => item.id === propositionId) + 1;
     $('#anchor-selection').textContent = `${token.text} → proposition P${number}`;
+  } else if (selectedGroups.size === 1) {
+    const groupId = [...selectedGroups][0];
+    const number = project.groups.findIndex(item => item.id === groupId) + 1;
+    $('#anchor-selection').textContent = `${token.text} → discourse group G${number}`;
   } else {
     const relation = project.relations.find(item => item.id === focusedRelationId);
     $('#anchor-selection').textContent = `${token.text} → ${relation.label} relationship`;
@@ -450,14 +474,16 @@ $('#anchor-form').addEventListener('submit', event => {
   event.preventDefault();
   runUiOperation(async () => {
     const tokenId = [...selectedTokens][0];
-    const relationTarget = selectedPropositions.size !== 1 && focusedRelationId;
-    const next = relationTarget
-      ? addAnalysisRelationAnchor(project, { relationId: focusedRelationId, tokenId, function: $('#anchor-function').value })
-      : addAnalysisPropositionAnchor(project,
-        { propositionId: [...selectedPropositions][0], tokenId, function: $('#anchor-function').value });
-    selectedTokens.clear(); selectedPropositions.clear(); $('#anchor-function').value = ''; closeEditors();
+    const groupTarget = selectedGroups.size === 1 ? [...selectedGroups][0] : null;
+    const relationTarget = selectedPropositions.size !== 1 && !groupTarget && focusedRelationId;
+    const next = groupTarget
+      ? addAnalysisGroupAnchor(project, { groupId: groupTarget, tokenId, function: $('#anchor-function').value })
+      : relationTarget ? addAnalysisRelationAnchor(project, { relationId: focusedRelationId, tokenId, function: $('#anchor-function').value })
+        : addAnalysisPropositionAnchor(project,
+          { propositionId: [...selectedPropositions][0], tokenId, function: $('#anchor-function').value });
+    selectedTokens.clear(); selectedPropositions.clear(); selectedGroups.clear(); $('#anchor-function').value = ''; closeEditors();
     await persistProject(next);
-    report(relationTarget
+    report(groupTarget ? 'Connective cue anchored to the discourse group without determining a relationship.' : relationTarget
       ? 'Connective cue anchored to the relationship without changing its semantic type.'
       : 'Connective cue anchored to the proposition without asserting a discourse relationship.');
   });
@@ -493,7 +519,7 @@ $('#role-form').addEventListener('submit', event => {
     }
     next = attachAnalysisConstituent(next, { propositionId, constituentId, role: $('#role-type').value,
       realization: selected === '__selected' ? 'explicit' : $('#role-realization').value });
-    selectedTokens.clear(); selectedPropositions.clear(); $('#role-label').value = ''; $('#role-type').value = ''; closeEditors();
+    selectedTokens.clear(); selectedPropositions.clear(); selectedGroups.clear(); $('#role-label').value = ''; $('#role-type').value = ''; closeEditors();
     await persistProject(next);
     report(selected === '__selected' ? 'Explicit grammatical constituent created and assigned.' : 'Reusable constituent assigned to the proposition.');
   });
@@ -505,6 +531,7 @@ function openNoteEditor(id = null, target = null) {
   noteDraftTarget = note ? { targetType: note.targetType, targetId: note.targetId } : target;
   $('#note-form-title').textContent = note ? 'Edit analysis note' : 'Add an analysis note';
   $('#note-text').value = note?.text ?? '';
+  $('#note-category').value = note?.category ?? 'general';
   if (note) {
     if (note.targetType === 'token') {
       const token = activeUnit().tokens.find(item => item.id === note.targetId);
@@ -541,12 +568,14 @@ $('#note-form').addEventListener('submit', event => {
   runUiOperation(async () => {
     const revised = Boolean(editingNoteId);
     let next;
-    if (editingNoteId) next = updateAnalysisNote(project, { id: editingNoteId, text: $('#note-text').value });
+    if (editingNoteId) next = updateAnalysisNote(project,
+      { id: editingNoteId, text: $('#note-text').value, category: $('#note-category').value });
     else {
-      next = addAnalysisNote(project, { id: crypto.randomUUID(), ...noteDraftTarget, text: $('#note-text').value });
+      next = addAnalysisNote(project,
+        { id: crypto.randomUUID(), ...noteDraftTarget, text: $('#note-text').value, category: $('#note-category').value });
     }
     editingNoteId = null; noteDraftTarget = null;
-    selectedTokens.clear(); selectedPropositions.clear(); $('#note-text').value = ''; closeEditors();
+    selectedTokens.clear(); selectedPropositions.clear(); selectedGroups.clear(); $('#note-text').value = ''; closeEditors();
     await persistProject(next); report(revised ? 'Analysis note updated.' : 'Analysis note saved.');
   });
 });
@@ -635,7 +664,7 @@ function travelCanvasHistory(redo = false) {
     const to = redo ? undoStack : redoStack;
     if (!from.length) return;
     to.push(project); const next = from.pop();
-    selectedTokens.clear(); selectedPropositions.clear(); focusedRelationId = null; closeEditors();
+    selectedTokens.clear(); selectedPropositions.clear(); selectedGroups.clear(); focusedRelationId = null; closeEditors();
     await persistProject(next, { history: false }); report(redo ? 'Edit restored.' : 'Edit undone.');
   });
 }

@@ -71,6 +71,7 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await page.getByRole('button', { name: 'Add connective anchor' }).click();
   await expect(page.locator('.relation-anchor')).toContainText('cause');
   await page.getByRole('button', { name: 'Add relationship note' }).click();
+  await page.locator('#note-category').selectOption('discourse');
   await page.locator('#note-text').fill('Supports the main inference');
   await page.getByRole('button', { name: 'Save note' }).click();
   await expect(page.locator('.relation-note')).toContainText('Supports the main inference');
@@ -88,6 +89,7 @@ test('one large canvas contains propositions, brackets, and directed relationshi
   await expect(page.locator('.relation-chip')).toHaveText('Reason → P2');
   await expect(page.locator('.relation-anchor')).toContainText('cause');
   await expect(page.locator('.relation-note')).toContainText('Explains the main inference');
+  await expect(page.locator('.relation-note')).toContainText('discourse');
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.locator('#project-file').setInputFiles(await download.path());
   await expect(page.locator('#active-project-name')).toHaveText('Test analysis (imported)');
@@ -141,6 +143,38 @@ test('a focused relationship can expand to trace its connected argument', async 
   await expect(page.locator('#feedback')).toContainText('3 propositions across 2 relationships');
   await page.getByRole('button', { name: 'Show focused relationship only' }).click();
   await expect(page.locator('.relation-edge')).toHaveCount(1);
+});
+
+test('groups can be selected, connected, and anchored as discourse units', async ({ page }) => {
+  await createPracticeProject(page);
+  await createProposition(page, 0, 2);
+  await createProposition(page, 2, 4);
+  await createProposition(page, 4, 6);
+  await createProposition(page, 6, 8);
+  await selectPropositions(page, [1, 2]);
+  await applyGroup(page, 'Premises');
+  await selectPropositions(page, [3, 4]);
+  await applyGroup(page, 'Conclusion');
+  await page.getByRole('checkbox', { name: 'Select group 1' }).check();
+  await page.getByRole('checkbox', { name: 'Select group 2' }).check();
+  await page.getByRole('button', { name: 'Connect selected', exact: true }).click();
+  await expect(page.locator('#relation-from')).toHaveValue(/.+/);
+  await page.locator('#relation-type').selectOption('evidence');
+  await expect(page.locator('#relation-description')).toContainText('From = evidence; To = supported claim');
+  await page.getByRole('button', { name: 'Add relation' }).click();
+  await expect(page.locator('.relation-chip')).toContainText('Evidence → G2');
+  await expect(page.locator('.relation-edge')).toHaveCount(1);
+  await page.locator('.canvas-word').first().click();
+  await page.getByRole('checkbox', { name: 'Select group 1' }).check();
+  await page.getByRole('button', { name: 'Anchor connective' }).click();
+  await expect(page.locator('#anchor-selection')).toContainText('discourse group G1');
+  await page.locator('#anchor-function').selectOption('coordination');
+  await page.getByRole('button', { name: 'Add connective anchor' }).click();
+  await expect(page.locator('.group-badge').first()).toContainText('coordination');
+  await page.getByRole('button', { name: 'Projects', exact: true }).click();
+  await page.getByRole('button', { name: 'Preview Mermaid' }).click();
+  await expect(page.locator('#mermaid-source')).toContainText('g1 -->|"Evidence"| g2');
+  await expect(page.locator('#mermaid-source')).toContainText('(coordination)');
 });
 
 test('crossing groups are rejected while nested groups stay in the same canvas', async ({ page }) => {
@@ -288,10 +322,12 @@ test('an explicit verb can be defined once and reused implicitly in another prop
   await expect(page.locator('.semantic-badge.role.implicit')).toContainText('predicate: renamed verb');
   await expect(page.getByRole('button', { name: 'Delete constituent renamed verb' })).toBeDisabled();
   await page.getByRole('button', { name: 'Add note to constituent renamed verb' }).click();
+  await page.locator('#note-category').selectOption('grammatical');
   await page.locator('#note-text').fill('Understood predicate carried forward');
   await page.getByRole('button', { name: 'Save note' }).click();
   await page.getByRole('button', { name: 'Inspector', exact: true }).click();
   await expect(page.locator('.constituent-notes')).toContainText('Understood predicate carried forward');
+  await expect(page.locator('.constituent-notes')).toContainText('grammatical');
   await page.getByRole('button', { name: 'Edit constituent note' }).click();
   await page.locator('#note-text').fill('Shared predicate carried forward');
   await page.getByRole('button', { name: 'Save note' }).click();
@@ -322,9 +358,11 @@ test('a proposition note can be authored, revised, persisted, and removed', asyn
   await createProposition(page, 0, 3);
   await page.getByRole('checkbox', { name: 'Select proposition 1', exact: true }).check();
   await page.getByRole('button', { name: 'Add note', exact: true }).click();
+  await page.locator('#note-category').selectOption('interpretive');
   await page.locator('#note-text').fill('The main assertion');
   await page.getByRole('button', { name: 'Save note', exact: true }).click();
   await expect(page.locator('.semantic-badge.note')).toContainText('The main assertion');
+  await expect(page.locator('.semantic-badge.note')).toContainText('interpretive');
   await page.getByRole('button', { name: 'Edit proposition note' }).click();
   await expect(page.locator('#note-text')).toHaveValue('The main assertion');
   await page.locator('#note-text').fill('The revised assertion');

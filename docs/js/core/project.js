@@ -7,7 +7,7 @@ import { normalizeAnalysisPresentation } from './presentation.js';
 /** @typedef {{constituentId:string, role:string, realization:'explicit'|'implicit'}} AnalysisConstituentRole */
 /** @typedef {{tokenId:string, kind:'connective', function:string}} AnalysisAnchor */
 /** @typedef {{id:string,targetType:'token'|'proposition'|'relation'|'constituent',targetId:string,text:string}} AnalysisNote */
-/** @typedef {{id:string, propositionIds:string[], label:string}} AnalysisGroup */
+/** @typedef {{id:string, propositionIds:string[], label:string, anchors?:AnalysisAnchor[]}} AnalysisGroup */
 /** @typedef {{id:string, from:string, to:string, label:string, type?:string, anchors?:AnalysisAnchor[]}} AnalysisRelation */
 /** @typedef {{schemaVersion:number, id:string, name:string, passage:object, propositions:AnalysisProposition[], constituents:AnalysisConstituent[], groups:AnalysisGroup[], relations:AnalysisRelation[], notes:AnalysisNote[], layout?:{columns:number,words:object}}} AnalysisProject */
 export function requireAnalysisCondition(condition, message) {
@@ -16,18 +16,24 @@ export function requireAnalysisCondition(condition, message) {
 
 /** Small initial vocabulary from DA-Spec §13. IDs are stable data; labels are presentation. */
 export const DISCOURSE_RELATION_TYPES = Object.freeze([
-  { id: 'cause', label: 'Cause', description: 'The source presents what brings about the target.' },
-  { id: 'reason', label: 'Reason', description: 'The source gives the reason for the target.' },
-  { id: 'purpose', label: 'Purpose', description: 'The source states the intended purpose of the target.' },
-  { id: 'result', label: 'Result', description: 'The source states a result of the target.' },
-  { id: 'condition', label: 'Condition', description: 'The source states a condition for the target.' },
-  { id: 'concession', label: 'Concession', description: 'The source concedes a point in relation to the target.' },
-  { id: 'contrast', label: 'Contrast', description: 'The source contrasts with the target.' },
-  { id: 'explanation', label: 'Explanation', description: 'The source explains the target.' },
-  { id: 'elaboration', label: 'Elaboration', description: 'The source develops the target with further detail.' },
-  { id: 'evidence', label: 'Evidence', description: 'The source supplies evidence for the target.' },
-  { id: 'sequence', label: 'Sequence', description: 'The source follows the target in discourse sequence.' },
-  { id: 'summary', label: 'Summary', description: 'The source summarizes the target.' },
+  { id: 'cause', label: 'Cause', sourceRole: 'cause', targetRole: 'effect', description: 'The source presents what brings about the target.' },
+  { id: 'reason', label: 'Reason', sourceRole: 'reason', targetRole: 'supported claim', description: 'The source gives the reason for the target.' },
+  { id: 'purpose', label: 'Purpose', sourceRole: 'intended purpose', targetRole: 'purposeful action', description: 'The source states the intended purpose of the target.' },
+  { id: 'result', label: 'Result', sourceRole: 'result', targetRole: 'basis', description: 'The source states a result of the target.' },
+  { id: 'condition', label: 'Condition', sourceRole: 'condition', targetRole: 'conditioned claim', description: 'The source states a condition for the target.' },
+  { id: 'concession', label: 'Concession', sourceRole: 'concession', targetRole: 'qualified claim', description: 'The source concedes a point in relation to the target.' },
+  { id: 'contrast', label: 'Contrast', sourceRole: 'contrasting item', targetRole: 'contrasted item', description: 'The source contrasts with the target.' },
+  { id: 'explanation', label: 'Explanation', sourceRole: 'explanation', targetRole: 'explained claim', description: 'The source explains the target.' },
+  { id: 'elaboration', label: 'Elaboration', sourceRole: 'elaboration', targetRole: 'developed claim', description: 'The source develops the target with further detail.' },
+  { id: 'evidence', label: 'Evidence', sourceRole: 'evidence', targetRole: 'supported claim', description: 'The source supplies evidence for the target.' },
+  { id: 'sequence', label: 'Sequence', sourceRole: 'following event', targetRole: 'preceding event', description: 'The source follows the target in discourse sequence.' },
+  { id: 'summary', label: 'Summary', sourceRole: 'summary', targetRole: 'summarized material', description: 'The source summarizes the target.' },
+]);
+
+export const ANALYSIS_NOTE_CATEGORIES = Object.freeze([
+  { id: 'general', label: 'General' }, { id: 'grammatical', label: 'Grammatical' },
+  { id: 'lexical', label: 'Lexical' }, { id: 'discourse', label: 'Discourse' },
+  { id: 'interpretive', label: 'Interpretive' },
 ]);
 
 /** Normalize a parsed-record passage; no text reconstruction or guessed annotations.
@@ -69,7 +75,10 @@ export function restoreAnalysisProject(value) {
     for (const anchor of proposition.anchors ?? []) project = addAnalysisPropositionAnchor(project,
       { propositionId: proposition.id, ...anchor });
   }
-  for (const group of value.groups) project = addAnalysisGroup(project, group);
+  for (const group of value.groups) {
+    project = addAnalysisGroup(project, group);
+    for (const anchor of group.anchors ?? []) project = addAnalysisGroupAnchor(project, { groupId: group.id, ...anchor });
+  }
   for (const relation of value.relations) {
     project = addAnalysisRelation(project, relation);
     for (const anchor of relation.anchors ?? []) project = addAnalysisRelationAnchor(project,
@@ -162,7 +171,7 @@ function analysisEntityIds(project) {
 }
 
 /** Add a user-authored note to one canonical analysis entity. */
-export function addAnalysisNote(project, { id, targetType, targetId, text }) {
+export function addAnalysisNote(project, { id, targetType, targetId, text, category }) {
   requireAnalysisCondition(typeof id === 'string' && id.trim() && !analysisEntityIds(project).includes(id), 'Note ID must be unique.');
   requireAnalysisCondition(['token', 'proposition', 'relation', 'constituent'].includes(targetType), 'Choose a known analysis note target.');
   const known = targetType === 'token'
@@ -172,7 +181,8 @@ export function addAnalysisNote(project, { id, targetType, targetId, text }) {
         : project.constituents.some(item => item.id === targetId);
   requireAnalysisCondition(known, 'Choose a known note target.');
   requireAnalysisCondition(typeof text === 'string' && text.trim(), 'Write a note before saving.');
-  return { ...project, notes: [...(project.notes ?? []), { id, targetType, targetId, text: text.trim() }] };
+  requireAnalysisCondition(category === undefined || ANALYSIS_NOTE_CATEGORIES.some(item => item.id === category), 'Choose a supported note category.');
+  return { ...project, notes: [...(project.notes ?? []), { id, targetType, targetId, text: text.trim(), ...(category ? { category } : {}) }] };
 }
 
 export function removeAnalysisNote(project, id) {
@@ -181,10 +191,12 @@ export function removeAnalysisNote(project, id) {
 }
 
 /** Revise note text without changing its identity or anchor. */
-export function updateAnalysisNote(project, { id, text }) {
+export function updateAnalysisNote(project, { id, text, category }) {
   requireAnalysisCondition(typeof text === 'string' && text.trim(), 'Write a note before saving.');
   requireAnalysisCondition((project.notes ?? []).some(item => item.id === id), 'Choose a known note.');
-  return { ...project, notes: project.notes.map(item => item.id === id ? { ...item, text: text.trim() } : item) };
+  requireAnalysisCondition(category === undefined || ANALYSIS_NOTE_CATEGORIES.some(item => item.id === category), 'Choose a supported note category.');
+  return { ...project, notes: project.notes.map(item => item.id === id
+    ? { ...item, text: text.trim(), ...(category ? { category } : {}) } : item) };
 }
 
 /** Identify a reusable, source-anchored constituent without assigning its tokens again.
@@ -321,15 +333,48 @@ export function updateAnalysisGroup(project, { id, label }) {
   return { ...project, groups: project.groups.map(item => item.id === id ? { ...item, label: label.trim() } : item) };
 }
 
+/** Anchor a source cue to a discourse segment without assigning that token again. */
+export function addAnalysisGroupAnchor(project, { groupId, tokenId, kind = 'connective', function: anchorFunction = '' }) {
+  requireAnalysisCondition(kind === 'connective', 'Only connective anchors are currently supported.');
+  requireAnalysisCondition(typeof anchorFunction === 'string', 'Anchor function must be text.');
+  requireAnalysisCondition(adaptAnalysisPassage(project.passage).tokens.some(item => item.id === tokenId), 'Choose a source token as the anchor.');
+  const group = project.groups.find(item => item.id === groupId);
+  requireAnalysisCondition(group, 'Choose a known discourse group.');
+  const anchors = group.anchors ?? [];
+  requireAnalysisCondition(!anchors.some(item => item.tokenId === tokenId && item.kind === kind), 'That connective already anchors this group.');
+  return { ...project, groups: project.groups.map(item => item.id === groupId
+    ? { ...item, anchors: [...anchors, { tokenId, kind, function: anchorFunction.trim() }] } : item) };
+}
+
+export function removeAnalysisGroupAnchor(project, { groupId, tokenId, kind = 'connective' }) {
+  const group = project.groups.find(item => item.id === groupId);
+  requireAnalysisCondition(group && (group.anchors ?? []).some(item => item.tokenId === tokenId && item.kind === kind), 'Choose a known group anchor.');
+  return { ...project, groups: project.groups.map(item => item.id === groupId
+    ? { ...item, anchors: item.anchors.filter(anchor => anchor.tokenId !== tokenId || anchor.kind !== kind) } : item) };
+}
+
+/** Remove a group and semantic edges that use it as an endpoint. */
+export function removeAnalysisGroup(project, id) {
+  requireAnalysisCondition(project.groups.some(item => item.id === id), 'Choose a known discourse group.');
+  const relationIds = new Set(project.relations.filter(item => item.from === id || item.to === id).map(item => item.id));
+  return { ...project, groups: project.groups.filter(item => item.id !== id),
+    relations: project.relations.filter(item => item.from !== id && item.to !== id),
+    notes: (project.notes ?? []).filter(item => item.targetType !== 'relation' || !relationIds.has(item.targetId)) };
+}
+
+function analysisEndpointIds(project) {
+  return new Set([...project.propositions, ...project.groups].map(item => item.id));
+}
+
 /** Semantic edges are separate from primary bracket containment. They never force crossing lines.
  * @param {AnalysisProject} project Current document.
  * @param {AnalysisRelation} input Proposed directed edge.
  * @returns {AnalysisProject}
  */
 export function addAnalysisRelation(project, { id, from, to, label, type }) {
-  const known = new Set(project.propositions.map(item => item.id));
+  const known = analysisEndpointIds(project);
   requireAnalysisCondition(typeof id === 'string' && id.trim() && !analysisEntityIds(project).includes(id), 'Relation ID must be unique.');
-  requireAnalysisCondition(known.has(from) && known.has(to) && from !== to, 'Choose two different propositions.');
+  requireAnalysisCondition(known.has(from) && known.has(to) && from !== to, 'Choose two different propositions or discourse groups.');
   const relationType = type ? DISCOURSE_RELATION_TYPES.find(item => item.id === type) : null;
   requireAnalysisCondition(!type || relationType, 'Choose a supported discourse relationship.');
   const resolvedLabel = relationType?.label ?? label;
@@ -377,10 +422,12 @@ export function removeAnalysisRelationAnchor(project, { relationId, tokenId, kin
  * @returns {AnalysisProject}
  */
 export function removeAnalysisProposition(project, id) {
-  const removedRelationIds = new Set(project.relations.filter(item => item.from === id || item.to === id).map(item => item.id));
+  const removedGroupIds = new Set(project.groups.filter(group => group.propositionIds.includes(id)).map(group => group.id));
+  const removedEndpoints = new Set([id, ...removedGroupIds]);
+  const removedRelationIds = new Set(project.relations.filter(item => removedEndpoints.has(item.from) || removedEndpoints.has(item.to)).map(item => item.id));
   return { ...project, propositions: project.propositions.filter(item => item.id !== id),
-    groups: project.groups.filter(group => !group.propositionIds.includes(id)),
-    relations: project.relations.filter(item => item.from !== id && item.to !== id),
+    groups: project.groups.filter(group => !removedGroupIds.has(group.id)),
+    relations: project.relations.filter(item => !removedEndpoints.has(item.from) && !removedEndpoints.has(item.to)),
     notes: (project.notes ?? []).filter(item => !(item.targetType === 'proposition' && item.targetId === id)
       && !(item.targetType === 'relation' && removedRelationIds.has(item.targetId))) };
 }
@@ -412,20 +459,24 @@ export function buildAnalysisOutline(project) {
 export function traceAnalysisArgument(project, relationId) {
   const seed = project.relations.find(item => item.id === relationId);
   requireAnalysisCondition(seed, 'Choose a known discourse relationship.');
-  const propositionIds = new Set([seed.from, seed.to]);
+  const endpointIds = new Set([seed.from, seed.to]);
   const relationIds = new Set();
   let changed = true;
   while (changed) {
     changed = false;
     for (const relation of project.relations) {
-      if (!propositionIds.has(relation.from) && !propositionIds.has(relation.to)) continue;
+      if (!endpointIds.has(relation.from) && !endpointIds.has(relation.to)) continue;
       if (!relationIds.has(relation.id)) { relationIds.add(relation.id); changed = true; }
-      if (!propositionIds.has(relation.from)) { propositionIds.add(relation.from); changed = true; }
-      if (!propositionIds.has(relation.to)) { propositionIds.add(relation.to); changed = true; }
+      if (!endpointIds.has(relation.from)) { endpointIds.add(relation.from); changed = true; }
+      if (!endpointIds.has(relation.to)) { endpointIds.add(relation.to); changed = true; }
     }
   }
+  const highlightedPropositions = new Set(project.propositions.filter(item => endpointIds.has(item.id)).map(item => item.id));
+  for (const group of project.groups.filter(item => endpointIds.has(item.id))) {
+    for (const propositionId of group.propositionIds) highlightedPropositions.add(propositionId);
+  }
   return {
-    propositionIds: project.propositions.filter(item => propositionIds.has(item.id)).map(item => item.id),
+    propositionIds: project.propositions.filter(item => highlightedPropositions.has(item.id)).map(item => item.id),
     relationIds: project.relations.filter(item => relationIds.has(item.id)).map(item => item.id),
   };
 }

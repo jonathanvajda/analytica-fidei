@@ -25,8 +25,8 @@ function positionElement(element, left, top, width) {
  * @returns {{render:function(object):void,updateSelection:function(Set):void,setZoom:function(number):void,fitToView:function():number,focusWord:function(string):void,getWidths:function():object}}
  */
 export function createAnalysisCanvasController({ root, viewport, sizer, onSelectWord, onInspectWord,
-  onMoveWord, onToggleProposition, onRemoveProposition, onEditGroup, onRemoveGroup, onRemovePropositionAnchor,
-  onDetachConstituent, onEditNote, onRemoveNote, onFocusRelation, onRemoveRelationAnchor }) {
+  onMoveWord, onToggleProposition, onToggleGroup, onRemoveProposition, onEditGroup, onRemoveGroup, onRemovePropositionAnchor,
+  onDetachConstituent, onEditNote, onRemoveNote, onFocusRelation, onRemoveRelationAnchor, onRemoveGroupAnchor }) {
   let model;
   let state;
   let zoom = 1;
@@ -88,8 +88,10 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function renderBlock(block) {
     const focused = state.project.relations.find(item => item.id === state.focusedRelationId);
+    const focusedPropositions = focused ? [focused.from, focused.to].flatMap(id =>
+      state.project.groups.find(group => group.id === id)?.propositionIds ?? [id]) : [];
     const highlighted = state.argumentTrace?.propositionIds.includes(block.id)
-      || (focused && [focused.from, focused.to].includes(block.id));
+      || focusedPropositions.includes(block.id);
     const wrapper = positionElement(el('div', { className: `canvas-block ${block.kind === 'proposition' ? 'proposition' : 'source-block'}${highlighted ? ' is-focused' : ''}`,
       'data-block-id': block.id }), 0, block.top);
     wrapper.style.height = `${block.bottom - block.top}px`;
@@ -129,7 +131,7 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
           const removeNote = el('button', { type: 'button', className: 'quiet', text: '×', 'aria-label': 'Remove proposition note' });
           removeNote.addEventListener('click', () => onRemoveNote(note.id));
           return el('span', { className: 'semantic-badge note', title: note.text },
-            [el('span', { text: `Note: ${note.text}` }), editNote, removeNote]);
+            [el('span', { text: `Note · ${note.category ?? 'general'}: ${note.text}` }), editNote, removeNote]);
         });
       heading.append(el('label', {}, [checkbox, el('span', { text: `P${number}` })]), ...roles, ...anchors, ...notes, remove);
     } else heading.append(el('span', { className: 'source-heading', text: 'Source' }));
@@ -139,12 +141,25 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
 
   function renderGroupLabels() {
     return model.groups.map(group => {
+      const number = state.project.groups.findIndex(item => item.id === group.id) + 1;
+      const select = el('input', { type: 'checkbox', 'aria-label': `Select group ${number}` });
+      select.checked = state.selectedGroups.has(group.id);
+      select.addEventListener('change', () => onToggleGroup(group.id, select.checked));
       const edit = el('button', { text: 'Edit', 'aria-label': `Edit group ${group.label || 'Discourse group'}` });
       edit.addEventListener('click', () => onEditGroup(group.id));
       const remove = el('button', { text: '×', 'aria-label': `Ungroup ${group.label || 'propositions'}` });
       remove.addEventListener('click', () => onRemoveGroup(group.id));
+      const anchors = (group.anchors ?? []).map(anchor => {
+        const word = model.unit.tokens.find(token => token.id === anchor.tokenId)?.text ?? 'source cue';
+        const removeAnchor = el('button', { type: 'button', className: 'quiet', text: '×',
+          'aria-label': `Remove group connective anchor ${word}` });
+        removeAnchor.addEventListener('click', () => onRemoveGroupAnchor(group.id, anchor.tokenId));
+        return el('span', { className: 'semantic-badge connective' }, [
+          el('span', { text: `◇ ${word}${anchor.function ? ` · ${anchor.function}` : ''}` }), removeAnchor,
+        ]);
+      });
       return positionElement(el('div', { className: 'group-badge', title: group.label || 'Discourse group' },
-        [el('span', { text: group.label || 'Discourse group' }), edit, remove]), model.gutter, group.top - 12);
+        [el('label', {}, [select, el('span', { text: `G${number}: ${group.label || 'Discourse group'}` })]), ...anchors, edit, remove]), model.gutter, group.top - 12);
     });
   }
 
@@ -155,7 +170,11 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
   }
 
   function renderRelations() {
-    const number = id => `P${state.project.propositions.findIndex(item => item.id === id) + 1}`;
+    const number = id => {
+      const propositionIndex = state.project.propositions.findIndex(item => item.id === id);
+      if (propositionIndex >= 0) return `P${propositionIndex + 1}`;
+      return `G${state.project.groups.findIndex(item => item.id === id) + 1}`;
+    };
     const chips = model.blocks.filter(block => block.relations.length).map(block => positionElement(el('div', { className: 'relation-chips' },
       block.relations.map(relation => {
         const traced = state.argumentTrace?.relationIds.includes(relation.id);
@@ -178,7 +197,7 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
             const remove = el('button', { type: 'button', className: 'quiet', text: '×', 'aria-label': 'Remove relationship note' });
             remove.addEventListener('click', () => onRemoveNote(note.id));
             return el('span', { className: 'semantic-badge note relation-note', title: note.text }, [
-              el('span', { text: `Note: ${note.text}` }), edit, remove,
+              el('span', { text: `Note · ${note.category ?? 'general'}: ${note.text}` }), edit, remove,
             ]);
           });
         return el('span', { className: 'relation-item' }, [button, ...anchors, ...notes]);
@@ -192,11 +211,13 @@ export function createAnalysisCanvasController({ root, viewport, sizer, onSelect
       svgElement('defs', {}, [svgElement('marker', { id: 'relation-arrow', viewBox: '0 0 10 10', refX: 9, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' },
         [svgElement('path', { d: 'M 0 0 L 10 5 L 0 10 z', fill: '#b37b2b' })])]),
       ...visibleRelations.map((item, index) => {
-        const from = model.blocks.find(block => block.id === item.from);
-        const to = model.blocks.find(block => block.id === item.to);
+        const endpointY = id => {
+          const group = model.groups.find(candidate => candidate.id === id);
+          return group ? (group.top + group.bottom) / 2 : model.blocks.find(block => block.id === id).wordY + 18;
+        };
         const lane = Math.max(8, model.gutter - 42 - index * 10);
         return svgElement('path', { class: 'relation-edge', 'data-relation-id': item.id, 'marker-end': 'url(#relation-arrow)',
-          d: `M ${x} ${from.wordY + 18} H ${lane} V ${to.wordY + 18} H ${x}` });
+          d: `M ${x} ${endpointY(item.from)} H ${lane} V ${endpointY(item.to)} H ${x}` });
       }),
     ]);
     return [svg, ...chips];

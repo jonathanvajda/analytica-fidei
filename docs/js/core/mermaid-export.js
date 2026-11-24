@@ -10,13 +10,15 @@ export function createAnalysisMermaid(project) {
   const unit = adaptAnalysisPassage(project.passage);
   const tokens = new Map(unit.tokens.map(token => [token.id, token.text]));
   const aliases = new Map(project.propositions.map((proposition, index) => [proposition.id, `p${index + 1}`]));
+  for (const [index, group] of project.groups.entries()) aliases.set(group.id, `g${index + 1}`);
   const lines = ['flowchart TD', '  %% Semantic export; freeform canvas coordinates are intentionally omitted.'];
-  let groupNumber = 0;
   function writeNodes(nodes, depth = 1) {
     for (const node of nodes) {
       const indent = '  '.repeat(depth);
       if (node.children) {
-        lines.push(`${indent}subgraph g${++groupNumber}["${escapeLabel(node.label || 'Discourse group')}"]`);
+        const cues = (node.anchors ?? []).map(anchor => `${tokens.get(anchor.tokenId) ?? 'source cue'}${anchor.function ? ` (${anchor.function})` : ''}`);
+        const label = `${node.label || 'Discourse group'}${cues.length ? ` · cue: ${cues.join(', ')}` : ''}`;
+        lines.push(`${indent}subgraph ${aliases.get(node.id)}["${escapeLabel(label)}"]`);
         lines.push(`${indent}  direction TB`);
         writeNodes(node.children, depth + 1);
         lines.push(`${indent}end`);

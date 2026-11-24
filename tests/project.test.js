@@ -3,6 +3,7 @@ import { createAnalysisProject, adaptAnalysisPassage, addAnalysisProposition, ad
   addAnalysisConstituent, updateAnalysisConstituent, removeAnalysisConstituent,
   attachAnalysisConstituent, addAnalysisPropositionAnchor,
   addAnalysisRelationAnchor, removeAnalysisRelationAnchor,
+  addAnalysisGroupAnchor, removeAnalysisGroupAnchor, removeAnalysisGroup,
   traceAnalysisArgument,
   addAnalysisTokenToProposition, removeAnalysisPropositionAnchor, detachAnalysisConstituent,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
@@ -133,6 +134,23 @@ test('controlled discourse relationships retain a stable type and canonical labe
   expect(() => addAnalysisRelation(withPropositions(), { id: 'r', from: 'p1', to: 'p0', type: 'unknown' })).toThrow(/supported/);
 });
 
+test('discourse groups can be relationship endpoints and carry independent connective cues', () => {
+  let project = withPropositions();
+  project = addAnalysisGroup(project, { id: 'premises', propositionIds: ['p0', 'p1'], label: 'Premises' });
+  project = addAnalysisGroup(project, { id: 'conclusion', propositionIds: ['p2', 'p3'], label: 'Conclusion' });
+  const tokenId = project.propositions[0].tokenIds[0];
+  project = addAnalysisGroupAnchor(project, { groupId: 'premises', tokenId, function: 'coordination' });
+  project = addAnalysisRelation(project, { id: 'r', from: 'premises', to: 'conclusion', type: 'evidence' });
+  expect(project.relations[0]).toMatchObject({ from: 'premises', to: 'conclusion', type: 'evidence' });
+  expect(traceAnalysisArgument(project, 'r').propositionIds).toEqual(['p0', 'p1', 'p2', 'p3']);
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
+  project = removeAnalysisGroupAnchor(project, { groupId: 'premises', tokenId });
+  expect(project.groups[0].anchors).toEqual([]);
+  project = removeAnalysisGroup(project, 'premises');
+  expect(project.relations).toEqual([]);
+  expect(project.groups.map(item => item.id)).toEqual(['conclusion']);
+});
+
 test('word and proposition notes validate, round-trip, and clean up with their proposition', () => {
   let project = withPropositions();
   const tokenId = adaptAnalysisPassage(project.passage).tokens[0].id;
@@ -153,6 +171,16 @@ test('relationship notes round-trip and are removed atomically with their edge',
   expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
   expect(removeAnalysisRelation(project, 'r').notes).toEqual([]);
   expect(removeAnalysisProposition(project, 'p1').notes).toEqual([]);
+});
+
+test('notes accept controlled categories and reject unknown categories', () => {
+  let project = withPropositions();
+  project = addAnalysisNote(project, { id: 'categorized', targetType: 'proposition', targetId: 'p0',
+    text: 'Clause-level observation', category: 'grammatical' });
+  expect(project.notes[0].category).toBe('grammatical');
+  project = updateAnalysisNote(project, { id: 'categorized', text: 'Discourse observation', category: 'discourse' });
+  expect(project.notes[0].category).toBe('discourse');
+  expect(() => addAnalysisNote(project, { id: 'bad', targetType: 'proposition', targetId: 'p0', text: 'x', category: 'unknown' })).toThrow(/category/);
 });
 
 test('entity IDs cannot collide across node/edge collections', () => {

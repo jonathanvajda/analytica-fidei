@@ -55,3 +55,4 @@ body{background:var(--paper)}
 @media(max-width:680px){.context-drawer{top:auto;left:0;width:100%;max-width:none;height:min(42%,320px);border-left:0;border-top:1px solid #b5c9bb;box-shadow:0 -8px 24px #233a3815}.inspector-actions{flex-wrap:nowrap;overflow-x:auto}}
 @media(max-width:680px){.brand img{width:34px;height:34px}.brand-name{font-size:1rem}.brand-name small{display:none}}
 .relation-chip.is-traced{border-color:#b37b2b;background:#f4e6c9}
+.group-badge label{display:inline-flex;align-items:center;gap:.3rem}.group-badge input{margin:0;accent-color:var(--accent)}

@@ -72,7 +72,7 @@
         <aside id="settings-panel" class="settings-panel" hidden aria-labelledby="settings-title"><div class="drawer-heading"><h2 id="settings-title">Canvas settings</h2><button id="close-settings" class="quiet" aria-label="Close settings">×</button></div><div class="stack"><label class="zoom-label">Zoom<select id="canvas-zoom"><option value="0.75">75%</option><option value="1" selected>100%</option><option value="1.25">125%</option><option value="1.5">150%</option></select></label><button id="fit-canvas">Fit canvas to view</button><button id="widen-canvas" title="Add horizontal grid space">Widen canvas</button><button id="theme-toggle" aria-pressed="false">Dark theme</button></div></aside>
         <aside id="context-drawer" class="context-drawer" hidden aria-label="Contextual inspector">
         <div class="drawer-heading"><h2>Inspector</h2><button class="quiet" id="close-inspector" aria-label="Close inspector">✕</button></div>
-        <p id="inspector-empty" class="small subtle">Select a word for its details. Select propositions to group them or connect their ideas.</p>
+        <p id="inspector-empty" class="small subtle">Select a word for details, or select propositions and discourse groups to connect their ideas.</p>
         <div class="toolbar inspector-actions" aria-label="Contextual analysis actions"><button id="open-role" disabled>Assign role</button><button id="open-anchor" disabled>Anchor connective</button><button id="open-note" disabled>Add note</button></div>
         <section id="constituent-library" class="constituent-library" hidden aria-labelledby="constituent-library-title"><h3 id="constituent-library-title" class="section-label">Reusable constituents</h3><div id="constituent-list"></div></section>
         <form id="group-form" class="canvas-popover" hidden>
@@ -83,7 +83,7 @@
           <div class="popover-heading"><strong id="relation-form-title">Connect propositions</strong><button type="button" class="quiet" data-close-popover aria-label="Close relation editor">✕</button></div>
           <div class="relation-endpoints"><label>From<select id="relation-from" required></select></label><span aria-hidden="true">→</span><label>To<select id="relation-to" required></select></label></div>
           <label for="relation-type">Discourse relationship</label><select id="relation-type" required><option value="">Choose a relationship</option></select>
-          <p class="small subtle relation-direction"><strong>Direction:</strong> the selected “From” proposition performs the chosen function in relation to “To.”</p>
+          <p class="small subtle relation-direction"><strong>Direction:</strong> the “From” analysis unit performs the relationship’s source role; “To” receives its target role.</p>
           <p id="relation-description" class="small relation-description" aria-live="polite">Choose a relationship to see its definition.</p>
           <details class="relation-legend"><summary>Relationship legend</summary><dl id="relation-legend-list" class="small"></dl></details>
           <button id="save-relation" class="primary" type="submit">Add relation</button>
@@ -114,7 +114,7 @@
         </form>
         <form id="note-form" class="canvas-popover" hidden>
           <div class="popover-heading"><strong id="note-form-title">Add an analysis note</strong><button type="button" class="quiet" data-close-popover aria-label="Close note editor">×</button></div>
-          <p id="note-target" class="small"></p><label for="note-text">Note</label><textarea id="note-text" required maxlength="1000" rows="5" placeholder="Record a grammatical or interpretive observation"></textarea>
+          <p id="note-target" class="small"></p><label for="note-category">Category</label><select id="note-category"></select><label for="note-text">Note</label><textarea id="note-text" required maxlength="1000" rows="5" placeholder="Record a grammatical or interpretive observation"></textarea>
           <button class="primary" type="submit">Save note</button>
         </form>
         <section id="word-inspector" class="canvas-popover inspector" hidden aria-label="Word details"><strong>Word details</strong><div id="word-details"></div></section>
