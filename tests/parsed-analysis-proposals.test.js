@@ -1,4 +1,6 @@
-import { createAnalysisProject, importParsedAnalysisDataset, restoreAnalysisProject, adaptAnalysisPassage } from '../docs/js/core/project.js';
+import { createAnalysisProject, importParsedAnalysisDataset, restoreAnalysisProject, adaptAnalysisPassage,
+  acceptParsedClauseProposal, rejectParsedAnalysisProposal, restoreParsedAnalysisProposal } from '../docs/js/core/project.js';
+import { removeAnalysisProposition } from '../docs/js/core/project.js';
 
 const passage = { source: { sourceId: 'sblgnt', version: '1', language: 'grc' }, unitKey: 'Eph.4.11', text: 'καὶ ἔδωκεν',
   records: [{ id: 'w1', text: 'καὶ', start: 0, end: 3 }, { id: 'w2', text: 'ἔδωκεν', start: 4, end: 10 }] };
@@ -18,6 +20,23 @@ test('identified parsed data becomes immutable provenance-bearing drafts', () =>
   expect(original.analysisProposals).toEqual([]);
   expect(project.propositions).toEqual([]);
   expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project))).analysisProposals).toEqual(project.analysisProposals);
+});
+
+test('clause acceptance uses proposition validation and proposal review is reversible', () => {
+  let project = importParsedAnalysisDataset(createAnalysisProject({ id: 'p', name: 'Review', passage }), dataset);
+  project = rejectParsedAnalysisProposal(project, 'p-clause');
+  expect(project.analysisProposals.find(item => item.id === 'p-clause').status).toBe('rejected');
+  project = restoreParsedAnalysisProposal(project, 'p-clause');
+  project = acceptParsedClauseProposal(project, { proposalId: 'p-clause', propositionId: 'accepted-clause' });
+  expect(project.propositions[0]).toMatchObject({ id: 'accepted-clause', tokenIds: [firstId, secondId] });
+  expect(project.analysisProposals.find(item => item.id === 'p-clause')).toMatchObject({
+    status: 'accepted', acceptedEntityId: 'accepted-clause', provenance: { providerId: 'syntax-fixture' },
+  });
+  expect(() => acceptParsedClauseProposal(project, { proposalId: 'p-clause', propositionId: 'again' })).toThrow(/proposed clause/);
+  expect(restoreAnalysisProject(JSON.parse(JSON.stringify(project)))).toEqual(project);
+  project = removeAnalysisProposition(project, 'accepted-clause');
+  expect(project.analysisProposals.find(item => item.id === 'p-clause')).toMatchObject({ status: 'proposed' });
+  expect(project.analysisProposals.find(item => item.id === 'p-clause')).not.toHaveProperty('acceptedEntityId');
 });
 
 test.each([

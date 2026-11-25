@@ -8,7 +8,8 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   MODIFIER_FUNCTIONS, addAnalysisDependency, updateAnalysisDependency, removeAnalysisDependency,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
   updateAnalysisRelation, removeAnalysisRelation, traceAnalysisArgument,
-  rejectAnalysisProposal, restoreAnalysisProposal } from './core/project.js';
+  rejectAnalysisProposal, restoreAnalysisProposal, importParsedAnalysisDataset, acceptParsedClauseProposal,
+  rejectParsedAnalysisProposal, restoreParsedAnalysisProposal } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
 import { openAnalysisRepository } from './adapters/project-storage.js';
@@ -109,6 +110,7 @@ function closeEditors() {
 function showInspector() {
   closeSettings();
   renderConstituentLibrary();
+  renderProposalReview();
   $('#context-drawer').hidden = false;
   $('#toggle-inspector').setAttribute('aria-expanded', 'true');
 }
@@ -235,6 +237,7 @@ function renderProject() {
   $('#project-actions').hidden = !project;
   if (!project) { $('#active-project-name').textContent = 'Discourse analysis canvas'; $('#source-description').textContent = ''; return; }
   renderConstituentLibrary();
+  renderProposalReview();
   const unit = activeUnit();
   $('#active-project-name').textContent = project.name;
   $('#source-description').textContent = `${project.passage.editionTitle ?? unit.source.sourceId} · ${unit.source.language}`;
@@ -314,6 +317,49 @@ function renderConstituentLibrary() {
       el('p', { className: 'small subtle', text: `${sourceText} · ${uses} ${uses === 1 ? 'use' : 'uses'}` }),
       el('div', { className: 'toolbar' }, [addNote, rename, remove]),
       ...(notes.length ? [el('div', { className: 'constituent-notes' }, notes)] : []),
+    ]);
+  }));
+}
+
+function renderProposalReview() {
+  if (!project) return;
+  const proposals = project.analysisProposals ?? [];
+  $('#proposal-review').hidden = !proposals.length;
+  if (!proposals.length) { $('#proposal-list').replaceChildren(); return; }
+  const unit = activeUnit();
+  const counts = proposals.reduce((result, item) => ({ ...result, [item.status]: (result[item.status] ?? 0) + 1 }), {});
+  $('#proposal-summary').textContent = `${counts.proposed ?? 0} awaiting review · ${counts.accepted ?? 0} accepted · ${counts.rejected ?? 0} rejected`;
+  $('#proposal-list').replaceChildren(...proposals.map(proposal => {
+    const words = unit.tokens.filter(token => proposal.tokenIds.includes(token.id)).map(token => token.text).join(' ');
+    const actions = [];
+    if (proposal.status === 'proposed' && proposal.type === 'clause') {
+      const accept = el('button', { type: 'button', text: 'Accept clause', className: 'primary' });
+      accept.addEventListener('click', () => runUiOperation(async () => {
+        await persistProject(acceptParsedClauseProposal(project, { proposalId: proposal.id, propositionId: crypto.randomUUID() }));
+        showInspector(); report('Proposed clause accepted as a proposition. The imported provenance was retained.');
+      }));
+      actions.push(accept);
+    }
+    if (proposal.status === 'proposed') {
+      const reject = el('button', { type: 'button', text: 'Reject', className: 'quiet' });
+      reject.addEventListener('click', () => runUiOperation(async () => {
+        await persistProject(rejectParsedAnalysisProposal(project, proposal.id)); showInspector(); report('Parsed-analysis proposal rejected.');
+      }));
+      actions.push(reject);
+    } else if (proposal.status === 'rejected') {
+      const restore = el('button', { type: 'button', text: 'Restore proposal', className: 'quiet' });
+      restore.addEventListener('click', () => runUiOperation(async () => {
+        await persistProject(restoreParsedAnalysisProposal(project, proposal.id)); showInspector(); report('Parsed-analysis proposal restored for review.');
+      }));
+      actions.push(restore);
+    }
+    return el('article', { className: `proposal-item ${proposal.status}` }, [
+      el('p', { text: words, lang: unit.source.language, dir: 'auto' }),
+      el('p', { className: 'small subtle', text: `${proposal.type} · ${proposal.status} · ${proposal.provenance.providerId} ${proposal.provenance.version}` }),
+      ...(proposal.confidence === undefined ? [] : [el('p', { className: 'small', text: `Confidence: ${Math.round(proposal.confidence * 100)}%` })]),
+      ...(proposal.status === 'proposed' && proposal.type !== 'clause'
+        ? [el('p', { className: 'small subtle', text: 'Acceptance for this proposal type is not implemented yet; review or reject it without changing the analysis.' })] : []),
+      el('div', { className: 'toolbar' }, actions),
     ]);
   }));
 }
@@ -818,6 +864,16 @@ $('#download-mermaid').addEventListener('click', () => {
   downloadTextFile(createAnalysisMermaid(project), `${safeFileStem(project.name)}_analysis.mmd`);
   report('Mermaid semantic flowchart exported.');
 });
+$('#proposal-file').addEventListener('change', event => runUiOperation(async () => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try {
+    const previousCount = project.analysisProposals.length;
+    const next = importParsedAnalysisDataset(project, JSON.parse(await file.text()));
+    await persistProject(next); showProjectDrawer(false); showInspector();
+    report(`${next.analysisProposals.length - previousCount} parsed-analysis proposals imported for review.`);
+  } finally { event.target.value = ''; }
+}));
 $('#delete-project').addEventListener('click', () => runUiOperation(async () => {
   if (!confirm(`Delete “${project.name}” from this browser? Export a backup first if you need it.`)) return;
   if (repository) await repository.delete(project.id);

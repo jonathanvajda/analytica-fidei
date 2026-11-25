@@ -90,6 +90,9 @@ export function restoreAnalysisProject(value) {
   for (const note of value.notes ?? []) project = addAnalysisNote(project, note);
   for (const review of value.proposalReviews ?? []) project = rejectAnalysisProposal(project, review);
   project = { ...project, analysisProposals: restoreParsedAnalysisProposals(adaptAnalysisPassage(project.passage), value.analysisProposals ?? []) };
+  requireAnalysisCondition(project.analysisProposals.filter(item => item.status === 'accepted')
+    .every(item => project.propositions.some(proposition => proposition.id === item.acceptedEntityId)),
+  'An accepted parsed proposal must reference its accepted analysis entity.');
   // Old v1 backups have no layout. Keep their semantic content and derive initial placement.
   if (value.layout === undefined) return project;
   const tokenIds = adaptAnalysisPassage(project.passage).tokens.map(token => token.id);
@@ -101,6 +104,35 @@ export function importParsedAnalysisDataset(project, dataset) {
   const proposals = adaptParsedAnalysisDataset(adaptAnalysisPassage(project.passage), dataset,
     (project.analysisProposals ?? []).map(item => item.id));
   return { ...project, analysisProposals: [...(project.analysisProposals ?? []), ...proposals] };
+}
+
+function reviseParsedProposal(project, id, status, acceptedEntityId) {
+  const proposal = (project.analysisProposals ?? []).find(item => item.id === id);
+  requireAnalysisCondition(proposal, 'Choose a known parsed-analysis proposal.');
+  requireAnalysisCondition(proposal.status !== status, `That proposal is already ${status}.`);
+  return { ...project, analysisProposals: project.analysisProposals.map(item => item.id === id
+    ? Object.freeze({ ...item, status, ...(acceptedEntityId ? { acceptedEntityId } : {}),
+      ...(!acceptedEntityId && item.acceptedEntityId ? { acceptedEntityId: undefined } : {}) }) : item) };
+}
+
+/** Accept a clause boundary as a normal proposition through existing validation. */
+export function acceptParsedClauseProposal(project, { proposalId, propositionId }) {
+  const proposal = (project.analysisProposals ?? []).find(item => item.id === proposalId);
+  requireAnalysisCondition(proposal?.type === 'clause' && proposal.status === 'proposed', 'Choose a proposed clause boundary.');
+  const accepted = addAnalysisProposition(project, { id: propositionId, tokenIds: proposal.tokenIds });
+  return reviseParsedProposal(accepted, proposalId, 'accepted', propositionId);
+}
+
+export function rejectParsedAnalysisProposal(project, id) {
+  const proposal = (project.analysisProposals ?? []).find(item => item.id === id);
+  requireAnalysisCondition(proposal?.status === 'proposed', 'Choose a proposed parsed-analysis assertion.');
+  return reviseParsedProposal(project, id, 'rejected');
+}
+
+export function restoreParsedAnalysisProposal(project, id) {
+  const proposal = (project.analysisProposals ?? []).find(item => item.id === id);
+  requireAnalysisCondition(proposal?.status === 'rejected', 'Choose a rejected parsed-analysis assertion.');
+  return reviseParsedProposal(project, id, 'proposed');
 }
 
 /** Persist rejection of a versioned automatic proposal without altering source or accepted analysis. */
@@ -500,7 +532,9 @@ export function removeAnalysisProposition(project, id) {
     groups: project.groups.filter(group => !removedGroupIds.has(group.id)),
     relations: project.relations.filter(item => !removedEndpoints.has(item.from) && !removedEndpoints.has(item.to)),
     notes: (project.notes ?? []).filter(item => !(item.targetType === 'proposition' && item.targetId === id)
-      && !(item.targetType === 'relation' && removedRelationIds.has(item.targetId))) };
+      && !(item.targetType === 'relation' && removedRelationIds.has(item.targetId))),
+    analysisProposals: (project.analysisProposals ?? []).map(item => item.acceptedEntityId === id
+      ? Object.freeze(Object.fromEntries(Object.entries({ ...item, status: 'proposed' }).filter(([key]) => key !== 'acceptedEntityId'))) : item) };
 }
 
 /** Remove one relationship and annotations that cannot exist without it. */

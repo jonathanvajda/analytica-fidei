@@ -94,7 +94,11 @@ There is no silent storage fallback advertised as a successful persistent save.
    role, dependency, verbal-feature, and connective proposals require known token IDs
    and enter the portable project only as immutable `proposed` records with provenance.
    Language/source mismatches, unknown types, duplicate IDs, and unmapped tokens reject
-   the import atomically. Review UI and accept/edit/reject commands remain next.
+   the import atomically. A project-data import control and Inspector review queue now
+   expose proposal text, type, provenance, confidence, and status. Clause proposals
+   can be explicitly accepted through the ordinary proposition validator; every type
+   can be rejected and restored through undoable project history. Acceptance for the
+   remaining proposal types and proposal editing remain next.
 
 1. **Reusable constituent refinement (UR-23, UR-24, UR-28, UR-81):** basic
    inspector authoring is implemented: selected source words define a canonical

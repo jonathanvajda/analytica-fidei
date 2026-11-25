@@ -603,6 +603,33 @@ test('a lexical connective proposal is visibly draft and pre-fills review', asyn
   await expect(page.locator('.word-landmark.proposed')).toHaveCount(0);
 });
 
+test('parsed-analysis proposals require review before changing the analysis', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);
+  const passage = { source: { sourceId: 'fixture', version: '1', language: 'en' }, unitKey: '1', text: 'Hear this',
+    records: [{ id: 'w1', text: 'Hear', start: 0, end: 4 }, { id: 'w2', text: 'this', start: 5, end: 9 }] };
+  await page.getByText('Practice texts & single-passage import', { exact: true }).click();
+  await page.locator('#project-name').fill('Parsed review');
+  await page.locator('#passage-file').setInputFiles({ name: 'passage.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(passage)) });
+  const prefix = 'urn:linguistic:fixture:1:1:token:provider:';
+  const dataset = { dataset: { id: 'parser', version: '2', language: 'en', sourceId: 'fixture' }, proposals: [
+    { id: 'clause-1', type: 'clause', tokenIds: [`${prefix}w1`, `${prefix}w2`], data: { clauseType: 'independent' }, confidence: 0.9 },
+    { id: 'verb-1', type: 'verbal-feature', tokenIds: [`${prefix}w1`], data: { finite: true } },
+  ] };
+  await page.getByRole('button', { name: 'Projects', exact: true }).click();
+  await page.locator('#proposal-file').setInputFiles({ name: 'parse.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(dataset)) });
+  await expect(page.locator('#proposal-summary')).toHaveText('2 awaiting review · 0 accepted · 0 rejected');
+  await expect(page.locator('.proposal-item')).toHaveCount(2);
+  await expect(page.locator('.proposal-item').nth(1)).toContainText('Acceptance for this proposal type is not implemented yet');
+  await page.locator('.proposal-item').nth(1).getByRole('button', { name: 'Reject' }).click();
+  await expect(page.locator('#proposal-summary')).toHaveText('1 awaiting review · 0 accepted · 1 rejected');
+  await page.getByRole('button', { name: 'Restore proposal' }).click();
+  await expect(page.locator('#proposal-summary')).toHaveText('2 awaiting review · 0 accepted · 0 rejected');
+  await page.getByRole('button', { name: 'Accept clause' }).click();
+  await expect(page.locator('#proposal-summary')).toHaveText('1 awaiting review · 1 accepted · 0 rejected');
+  await expect(page.locator('.canvas-block.proposition')).toHaveCount(1);
+});
+
 test('invalid imports preserve the active analysis and imported markup is text', async ({ page }) => {
   await createPracticeProject(page);
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
