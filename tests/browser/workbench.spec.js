@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
 
 async function createPracticeProject(page, language = 'en') {
   await page.goto('./');
@@ -116,6 +117,14 @@ test('project data tools preview and download a Mermaid semantic flowchart', asy
   await page.getByRole('button', { name: 'Preview Mermaid' }).click();
   await expect(page.locator('#mermaid-source')).toContainText('flowchart TD');
   await expect(page.locator('#mermaid-source')).toContainText('Evidence');
+  const svgDownload = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download SVG' }).click();
+  const svg = await svgDownload;
+  expect(svg.suggestedFilename()).toBe('Test_analysis_analysis.svg');
+  const svgText = await readFile(await svg.path(), 'utf8');
+  expect(svgText).toContain('<svg xmlns="http://www.w3.org/2000/svg"');
+  expect(svgText).toContain('data-relation-id=');
+  expect(svgText).toContain('>Evidence</text>');
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download Mermaid' }).click();
   expect((await downloadPromise).suggestedFilename()).toBe('Test_analysis_analysis.mmd');

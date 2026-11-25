@@ -18,6 +18,7 @@ import { createAnalysisCanvasController } from './ui/analysis-canvas.js';
 import { createEditionLibrary, loadBundledEditionCatalog } from './adapters/edition-library.js';
 import { normalizeEditionCorpus } from './core/editions.js';
 import { createAnalysisMermaid } from './core/mermaid-export.js';
+import { createAnalysisSvg } from './core/svg-export.js';
 import { collectGrammaticalLandmarks, GRAMMATICAL_LANDMARK_TYPES } from './core/grammatical-landmarks.js';
 import { suggestConnectiveCues } from './core/connective-suggestions.js';
 import { createEditionBrowser } from './ui/edition-browser.js';
@@ -879,6 +880,10 @@ $('#close-mermaid-preview').addEventListener('click', () => { $('#mermaid-previe
 $('#download-mermaid').addEventListener('click', () => {
   downloadTextFile(createAnalysisMermaid(project), `${safeFileStem(project.name)}_analysis.mmd`);
   report('Mermaid semantic flowchart exported.');
+});
+$('#download-svg').addEventListener('click', () => {
+  downloadTextFile(createAnalysisSvg(project, { tokenWidths: canvas.getWidths() }), `${safeFileStem(project.name)}_analysis.svg`, 'image/svg+xml;charset=utf-8');
+  report('Standalone vector SVG exported from the resolved analysis layout.');
 });
 $('#proposal-file').addEventListener('change', event => runUiOperation(async () => {
   const file = event.target.files[0];

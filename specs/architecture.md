@@ -212,6 +212,12 @@ pre-caches the application module graph, edition registry, and complete bundled
 SBLGNT text; same-origin assets encountered later are refreshed online and retained
 for offline fallback. IndexedDB analysis persistence remains independent of the cache.
 UR-05's RDF export and other full-spec acceptance gates are not complete.
+UR-47 is complete. Current project data can download a standalone, XML-escaped
+vector SVG regenerated from semantic state and the resolved canvas layout. The
+export includes canonical language-tagged source text, proposition labels, group
+brackets, and all directed, labeled discourse relationships as native SVG shapes
+and text. Optional live presentation layers and theme parity remain separately
+scoped to UR-59; rasterization remains UR-46.
 
 ## Specification provenance
 
