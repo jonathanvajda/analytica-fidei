@@ -42,6 +42,11 @@ references from slash-separated codes. It does not infer morpheme boundaries or
 decode a complete morphology grammar. Supply token `language` where it differs
 from the source language.
 
+A generic record may supply `readingAlternative: { written, read, type }` for
+qere/ketiv or another provider-identified written/read distinction. The adapter
+requires `written` to equal the unchanged canonical token text, preserves both
+forms as a sourced annotation, and never substitutes the read form into the token.
+
 ## Align texts
 
 `createLinguisticTokenSpan(unit, tokenIds)` describes ordered tokens, including

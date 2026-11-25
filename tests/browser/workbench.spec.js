@@ -521,6 +521,30 @@ test('Hebrew display controls stay hidden for non-Hebrew working texts', async (
   await expect(page.locator('#toggle-cantillation')).toBeHidden();
 });
 
+test('a supplied Hebrew written/read alternative is inspectable without replacing the source word', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);
+  await page.getByText('Practice texts & single-passage import', { exact: true }).click();
+  await page.locator('#project-name').fill('Reading alternatives');
+  const passage = { source: { sourceId: 'reading-fixture', version: '1', language: 'hbo', provenance: { providerId: 'fixture-provider' } }, unitKey: '1',
+    records: [{ id: 'w1', text: 'הוא', readingAlternative: { written: 'הוא', read: 'היא', type: 'qere-ketiv' } }] };
+  await page.locator('#passage-file').setInputFiles({ name: 'readings.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(passage)) });
+  const word = page.locator('.canvas-word').first();
+  await expect(word.locator('.word-surface')).toHaveText('הוא');
+  await word.dblclick();
+  const alternative = page.locator('.reading-alternative');
+  await expect(alternative).toContainText('Written: הוא');
+  await expect(alternative).toContainText('Read: היא');
+  await expect(alternative).toContainText('qere-ketiv');
+  await expect(alternative).toContainText('fixture-provider');
+  await expect(word.locator('.word-surface')).toHaveText('הוא');
+  await page.reload();
+  await page.getByRole('button', { name: 'Reading alternatives', exact: true }).click();
+  await expect(word.locator('.word-surface')).toHaveText('הוא');
+  await word.dblclick();
+  await expect(page.locator('.reading-alternative')).toContainText('Read: היא');
+});
+
 test('supplied lexical glosses form a persistent optional canvas layer', async ({ page }) => {
   await page.goto('./');
   await expect(page.locator('#storage-status')).toContainText(/ready|unavailable/);

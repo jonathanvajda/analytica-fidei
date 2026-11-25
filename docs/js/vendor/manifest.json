@@ -14,7 +14,7 @@
     {
       "path": "docs/js/vendor/linguistic-adapters/lexical-annotations.js",
       "sourcePath": "packages/linguistic-adapters/src/lexical-annotations.js",
-      "sha256": "1be0c2fea5e557ebe3ca839d34c258578634ad2ec53b22d46d0a397cd3da5cfd"
+      "sha256": "667fd86c6b991c048a16577c88c6609ce07b6436c8a36037cba28629c06e0c0a"
     },
     {
       "path": "docs/js/vendor/linguistic-adapters/source-model.js",
@@ -29,7 +29,7 @@
     {
       "path": "docs/js/vendor/linguistic-adapters/token-adapters.js",
       "sourcePath": "packages/linguistic-adapters/src/token-adapters.js",
-      "sha256": "d959689b00afe28321ddac67009e7250ae06eadf1ea515386446935087cc954f"
+      "sha256": "eeab72910ae37aeb086ee9b4136f3950011042c2e9fd18ed9700f22db3096306"
     },
     {
       "path": "docs/js/vendor/linguistic-adapters/validation.js",

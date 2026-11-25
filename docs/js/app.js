@@ -430,10 +430,18 @@ function inspectCanvasWord(id) {
   const annotations = unit.annotations.filter(item => item.targetTokenId === id);
   const notes = (project.notes ?? []).filter(item => item.targetType === 'token' && item.targetId === id);
   const connectiveSuggestion = suggestConnectiveCues(project, { includeRejected: true }).get(id);
+  const annotationElement = item => {
+    if (item.kind !== 'readingAlternative') return el('p', { text: `${item.kind}: ${typeof item.value === 'string' ? item.value : JSON.stringify(item.value)} · ${item.scheme ?? 'unspecified scheme'} · ${item.status} · ${item.provenance.providerId}` });
+    return el('section', { className: 'reading-alternative', 'aria-label': 'Supplied written and read alternative' }, [
+      el('p', {}, [el('strong', { text: 'Written: ' }), el('bdi', { text: item.value.written, lang: token.language, dir: 'auto' })]),
+      el('p', {}, [el('strong', { text: 'Read: ' }), el('bdi', { text: item.value.read, lang: item.language ?? token.language, dir: 'auto' })]),
+      el('p', { className: 'small subtle', text: `${item.value.type ?? 'reading alternative'} · ${item.scheme ?? 'unspecified scheme'} · ${item.status} · ${item.provenance.providerId}` }),
+    ]);
+  };
   closeEditors(); showInspector(); $('#inspector-empty').hidden = true; $('#word-inspector').hidden = false;
   $('#word-details').replaceChildren(el('p', { text: `${token.text} · ${token.language}`, lang: token.language, dir: 'auto' }),
     ...(token.reference ? [el('p', { text: token.reference.display })] : []),
-    ...annotations.map(item => el('p', { text: `${item.kind}: ${typeof item.value === 'string' ? item.value : JSON.stringify(item.value)} · ${item.scheme ?? 'unspecified scheme'} · ${item.status} · ${item.provenance.providerId}` })),
+    ...annotations.map(annotationElement),
     ...(annotations.length ? [] : [el('p', { text: 'No lexical annotations supplied for this word.' })]),
     ...(connectiveSuggestion ? [el('div', { className: 'connective-suggestion' }, [
       el('p', { text: connectiveSuggestion.status === 'rejected'

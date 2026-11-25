@@ -201,6 +201,12 @@ annotation layers and export parity remain future work.
 UR-68 has independent, persistent Hebrew vowel-point and cantillation display
 filters. Filtering occurs only at measurement/render time over canonical token text;
 source strings, identities, selections, and analysis assertions are unchanged.
+UR-69 is complete for supplied word-level written/read alternatives. The generic
+record adapter validates separately identified written and read forms, requires the
+written form to equal the unchanged canonical source token, retains type, scheme,
+status, and provider provenance, and renders both forms explicitly in the Inspector.
+Save/reopen preserves the source word and alternative annotation. Dataset-specific
+qere/ketiv ingestion can map provider fields through the same adapter contract.
 UR-06 has an installable web-app manifest and a versioned service worker. Installation
 pre-caches the application module graph, edition registry, and complete bundled
 SBLGNT text; same-origin assets encountered later are refreshed online and retained

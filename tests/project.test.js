@@ -318,3 +318,16 @@ test('supplied lexical annotations retain language, provenance, and raw scheme',
   expect(unit.annotations.find(item => item.kind === 'gloss')).toMatchObject({ value: 'word', language: 'en' });
   expect(unit.annotations.find(item => item.kind === 'morphology')).toMatchObject({ value: 'N-NSM', scheme: 'fixture-codes', provenance: { providerId: 'fixture' } });
 });
+
+test('supplied written and read alternatives preserve the canonical source token', () => {
+  const passage = { source: { sourceId: 'h', version: '1', language: 'hbo', provenance: { providerId: 'reading-fixture' } }, unitKey: '1',
+    records: [{ id: 'w1', text: 'הוא', readingAlternative: { written: 'הוא', read: 'היא', type: 'qere-ketiv' } }] };
+  const unit = adaptAnalysisPassage(passage);
+  expect(unit.tokens[0].text).toBe('הוא');
+  expect(unit.annotations.find(item => item.kind === 'readingAlternative')).toMatchObject({
+    value: { written: 'הוא', read: 'היא', type: 'qere-ketiv' }, scheme: 'provider-reading-alternative',
+    status: 'provided', provenance: { providerId: 'reading-fixture' },
+  });
+  expect(() => adaptAnalysisPassage({ ...passage, records: [{ text: 'הוא', readingAlternative: { written: 'היא', read: 'הוא' } }] }))
+    .toThrow(/written form must equal/);
+});

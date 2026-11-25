@@ -1,7 +1,7 @@
 import { assertLinguisticCondition as assert, copyLinguisticData as copy,
   requireLinguisticString as string, requireLinguisticLanguage } from './validation.js';
 
-export const LINGUISTIC_ANNOTATION_KINDS = Object.freeze(['lemma', 'morphology', 'partOfSpeech', 'gloss', 'lexicalReference']);
+export const LINGUISTIC_ANNOTATION_KINDS = Object.freeze(['lemma', 'morphology', 'partOfSpeech', 'gloss', 'lexicalReference', 'readingAlternative']);
 export const LINGUISTIC_REVIEW_STATUSES = Object.freeze(['provided', 'proposed', 'accepted', 'rejected', 'unavailable']);
 
 /** Create a sourced annotation without treating morphology or lexical IDs as syntax.
@@ -17,6 +17,12 @@ export function createLinguisticAnnotation({ id, targetTokenId, kind, value = nu
   assert(provenance && typeof provenance === 'object', 'MISSING_PROVENANCE', 'Annotations require provider provenance.');
   string(provenance.providerId, 'provenance.providerId');
   if (kind === 'gloss' && status !== 'unavailable') requireLinguisticLanguage(language);
+  if (kind === 'readingAlternative' && status !== 'unavailable') {
+    assert(value && typeof value === 'object' && !Array.isArray(value), 'INVALID_READING_ALTERNATIVE', 'Reading alternatives require written and read forms.');
+    string(value.written, 'readingAlternative.written');
+    string(value.read, 'readingAlternative.read');
+    assert(value.type === undefined || typeof value.type === 'string', 'INVALID_READING_ALTERNATIVE', 'Reading-alternative type must be text.');
+  }
   return { id: string(id, 'annotation.id'), targetTokenId: string(targetTokenId, 'targetTokenId'), kind,
     value: copy(value), scheme: scheme === null ? null : string(scheme, 'scheme'),
     language: language === null ? null : requireLinguisticLanguage(language), status, provenance: copy(provenance) };

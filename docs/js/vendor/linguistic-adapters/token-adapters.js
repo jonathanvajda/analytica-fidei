@@ -3,8 +3,8 @@ import { createLinguisticAnnotation, parseStrongsReference, readOshbLemmaReferen
 import { assertLinguisticCondition as assert, requireLinguisticString as string } from './validation.js';
 
 const DEFAULT_FIELDS = Object.freeze({ id: 'id', text: 'text', language: 'language', start: 'start', end: 'end',
-  lemma: 'lemma', morphology: 'morph', partOfSpeech: 'pos', gloss: 'gloss', strongs: 'strongs' });
-const ANNOTATION_FIELDS = ['lemma', 'morphology', 'partOfSpeech', 'gloss', 'strongs'];
+  lemma: 'lemma', morphology: 'morph', partOfSpeech: 'pos', gloss: 'gloss', strongs: 'strongs', readingAlternative: 'readingAlternative' });
+const ANNOTATION_FIELDS = ['lemma', 'morphology', 'partOfSpeech', 'gloss', 'strongs', 'readingAlternative'];
 
 /** Configure an adapter for an explicitly mapped, already-parsed token schema.
  * @param {object} options
@@ -36,7 +36,7 @@ export function createTokenRecordAdapter({ adapterId, fields = {}, glossLanguage
       const values = ANNOTATION_FIELDS.flatMap(field => suppliedAnnotations(field, read(record, field)));
       values.push(...mapAdditionalAnnotations({ record, token, source: unit.source }));
       return values.map((annotation, annotationIndex) => createLinguisticAnnotation({
-        ...normalizeAdapterAnnotation(annotation, { glossLanguage, strongsNamespace, morphologyScheme }),
+        ...normalizeAdapterAnnotation(annotation, { glossLanguage, strongsNamespace, morphologyScheme, token }),
         id: `${token.id}:annotation:${annotationIndex}`, targetTokenId: token.id, provenance
       }));
     });
@@ -55,6 +55,11 @@ function normalizeAdapterAnnotation(annotation, options) {
   if (annotation.scheme === 'strongs') return { ...annotation, value: parseStrongsReference(annotation.value, { namespace: options.strongsNamespace }) };
   if (annotation.kind === 'gloss') return { ...annotation, language: annotation.language || options.glossLanguage };
   if (annotation.kind === 'morphology') return { ...annotation, scheme: annotation.scheme || options.morphologyScheme };
+  if (annotation.kind === 'readingAlternative') {
+    if (!annotation.value || typeof annotation.value !== 'object' || Array.isArray(annotation.value)) throw new Error('Reading alternatives require written and read forms.');
+    if (annotation.value.written !== options.token.text) throw new Error('A reading alternative’s written form must equal the unchanged source token.');
+    return { ...annotation, value: { type: 'written-read', ...annotation.value }, scheme: annotation.scheme || 'provider-reading-alternative' };
+  }
   return annotation;
 }
 
