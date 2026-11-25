@@ -98,7 +98,10 @@ There is no silent storage fallback advertised as a successful persistent save.
    expose proposal text, type, provenance, confidence, and status. Clause proposals
    can be explicitly accepted through the ordinary proposition validator; every type
    can be rejected and restored through undoable project history. Acceptance for the
-   remaining proposal types and proposal editing remain next.
+   Constituent-span proposals can likewise become reusable constituents without
+   inventing a grammatical role. Removing an accepted proposition or constituent
+   returns its originating proposal to review. Acceptance for role, dependency,
+   verbal-feature, and connective proposals, plus proposal editing, remain next.
 
 1. **Reusable constituent refinement (UR-23, UR-24, UR-28, UR-81):** basic
    inspector authoring is implemented: selected source words define a canonical

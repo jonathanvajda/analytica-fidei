@@ -8,7 +8,7 @@ import { createAnalysisProject, restoreAnalysisProject, adaptAnalysisPassage, ad
   MODIFIER_FUNCTIONS, addAnalysisDependency, updateAnalysisDependency, removeAnalysisDependency,
   removeAnalysisTokensFromProposition, addAnalysisNote, updateAnalysisNote, removeAnalysisNote,
   updateAnalysisRelation, removeAnalysisRelation, traceAnalysisArgument,
-  rejectAnalysisProposal, restoreAnalysisProposal, importParsedAnalysisDataset, acceptParsedClauseProposal,
+  rejectAnalysisProposal, restoreAnalysisProposal, importParsedAnalysisDataset, acceptParsedClauseProposal, acceptParsedConstituentProposal,
   rejectParsedAnalysisProposal, restoreParsedAnalysisProposal } from './core/project.js';
 import { placeAnalysisCanvasWord, resetAnalysisCanvas, widenAnalysisCanvas } from './core/canvas-layout.js';
 import { createPracticePassage } from './core/practice-passages.js';
@@ -340,6 +340,14 @@ function renderProposalReview() {
       }));
       actions.push(accept);
     }
+    if (proposal.status === 'proposed' && proposal.type === 'constituent') {
+      const accept = el('button', { type: 'button', text: 'Accept constituent', className: 'primary' });
+      accept.addEventListener('click', () => runUiOperation(async () => {
+        await persistProject(acceptParsedConstituentProposal(project, { proposalId: proposal.id, constituentId: crypto.randomUUID() }));
+        showInspector(); report('Proposed phrase accepted as a reusable constituent. No grammatical role was inferred.');
+      }));
+      actions.push(accept);
+    }
     if (proposal.status === 'proposed') {
       const reject = el('button', { type: 'button', text: 'Reject', className: 'quiet' });
       reject.addEventListener('click', () => runUiOperation(async () => {
@@ -357,7 +365,7 @@ function renderProposalReview() {
       el('p', { text: words, lang: unit.source.language, dir: 'auto' }),
       el('p', { className: 'small subtle', text: `${proposal.type} · ${proposal.status} · ${proposal.provenance.providerId} ${proposal.provenance.version}` }),
       ...(proposal.confidence === undefined ? [] : [el('p', { className: 'small', text: `Confidence: ${Math.round(proposal.confidence * 100)}%` })]),
-      ...(proposal.status === 'proposed' && proposal.type !== 'clause'
+      ...(proposal.status === 'proposed' && !['clause', 'constituent'].includes(proposal.type)
         ? [el('p', { className: 'small subtle', text: 'Acceptance for this proposal type is not implemented yet; review or reject it without changing the analysis.' })] : []),
       el('div', { className: 'toolbar' }, actions),
     ]);

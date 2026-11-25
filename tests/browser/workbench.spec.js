@@ -615,19 +615,23 @@ test('parsed-analysis proposals require review before changing the analysis', as
   const dataset = { dataset: { id: 'parser', version: '2', language: 'en', sourceId: 'fixture' }, proposals: [
     { id: 'clause-1', type: 'clause', tokenIds: [`${prefix}w1`, `${prefix}w2`], data: { clauseType: 'independent' }, confidence: 0.9 },
     { id: 'verb-1', type: 'verbal-feature', tokenIds: [`${prefix}w1`], data: { finite: true } },
+    { id: 'phrase-1', type: 'constituent', tokenIds: [`${prefix}w2`], data: { label: 'demonstrative phrase' } },
   ] };
   await page.getByRole('button', { name: 'Projects', exact: true }).click();
   await page.locator('#proposal-file').setInputFiles({ name: 'parse.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(dataset)) });
-  await expect(page.locator('#proposal-summary')).toHaveText('2 awaiting review · 0 accepted · 0 rejected');
-  await expect(page.locator('.proposal-item')).toHaveCount(2);
+  await expect(page.locator('#proposal-summary')).toHaveText('3 awaiting review · 0 accepted · 0 rejected');
+  await expect(page.locator('.proposal-item')).toHaveCount(3);
   await expect(page.locator('.proposal-item').nth(1)).toContainText('Acceptance for this proposal type is not implemented yet');
   await page.locator('.proposal-item').nth(1).getByRole('button', { name: 'Reject' }).click();
-  await expect(page.locator('#proposal-summary')).toHaveText('1 awaiting review · 0 accepted · 1 rejected');
+  await expect(page.locator('#proposal-summary')).toHaveText('2 awaiting review · 0 accepted · 1 rejected');
   await page.getByRole('button', { name: 'Restore proposal' }).click();
-  await expect(page.locator('#proposal-summary')).toHaveText('2 awaiting review · 0 accepted · 0 rejected');
+  await expect(page.locator('#proposal-summary')).toHaveText('3 awaiting review · 0 accepted · 0 rejected');
   await page.getByRole('button', { name: 'Accept clause' }).click();
-  await expect(page.locator('#proposal-summary')).toHaveText('1 awaiting review · 1 accepted · 0 rejected');
+  await expect(page.locator('#proposal-summary')).toHaveText('2 awaiting review · 1 accepted · 0 rejected');
   await expect(page.locator('.canvas-block.proposition')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Accept constituent' }).click();
+  await expect(page.locator('#proposal-summary')).toHaveText('1 awaiting review · 2 accepted · 0 rejected');
+  await expect(page.locator('#constituent-library')).toContainText('demonstrative phrase');
 });
 
 test('invalid imports preserve the active analysis and imported markup is text', async ({ page }) => {

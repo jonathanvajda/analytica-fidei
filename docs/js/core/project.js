@@ -91,7 +91,9 @@ export function restoreAnalysisProject(value) {
   for (const review of value.proposalReviews ?? []) project = rejectAnalysisProposal(project, review);
   project = { ...project, analysisProposals: restoreParsedAnalysisProposals(adaptAnalysisPassage(project.passage), value.analysisProposals ?? []) };
   requireAnalysisCondition(project.analysisProposals.filter(item => item.status === 'accepted')
-    .every(item => project.propositions.some(proposition => proposition.id === item.acceptedEntityId)),
+    .every(item => item.type === 'clause'
+      ? project.propositions.some(proposition => proposition.id === item.acceptedEntityId)
+      : item.type === 'constituent' && project.constituents.some(constituent => constituent.id === item.acceptedEntityId)),
   'An accepted parsed proposal must reference its accepted analysis entity.');
   // Old v1 backups have no layout. Keep their semantic content and derive initial placement.
   if (value.layout === undefined) return project;
@@ -121,6 +123,15 @@ export function acceptParsedClauseProposal(project, { proposalId, propositionId 
   requireAnalysisCondition(proposal?.type === 'clause' && proposal.status === 'proposed', 'Choose a proposed clause boundary.');
   const accepted = addAnalysisProposition(project, { id: propositionId, tokenIds: proposal.tokenIds });
   return reviseParsedProposal(accepted, proposalId, 'accepted', propositionId);
+}
+
+/** Accept a parsed phrase span as a reusable constituent without inventing a role. */
+export function acceptParsedConstituentProposal(project, { proposalId, constituentId }) {
+  const proposal = (project.analysisProposals ?? []).find(item => item.id === proposalId);
+  requireAnalysisCondition(proposal?.type === 'constituent' && proposal.status === 'proposed', 'Choose a proposed constituent.');
+  const label = typeof proposal.data.label === 'string' ? proposal.data.label : '';
+  const accepted = addAnalysisConstituent(project, { id: constituentId, tokenIds: proposal.tokenIds, label });
+  return reviseParsedProposal(accepted, proposalId, 'accepted', constituentId);
 }
 
 export function rejectParsedAnalysisProposal(project, id) {
@@ -298,7 +309,9 @@ export function removeAnalysisConstituent(project, id) {
   requireAnalysisCondition(!(project.dependencies ?? []).some(item => item.modifierId === id || item.targetId === id),
     'Remove grammatical dependencies involving this constituent before deleting it.');
   return { ...project, constituents: project.constituents.filter(item => item.id !== id),
-    notes: (project.notes ?? []).filter(item => item.targetType !== 'constituent' || item.targetId !== id) };
+    notes: (project.notes ?? []).filter(item => item.targetType !== 'constituent' || item.targetId !== id),
+    analysisProposals: (project.analysisProposals ?? []).map(item => item.acceptedEntityId === id
+      ? Object.freeze(Object.fromEntries(Object.entries({ ...item, status: 'proposed' }).filter(([key]) => key !== 'acceptedEntityId'))) : item) };
 }
 
 export const MODIFIER_FUNCTIONS = Object.freeze([
