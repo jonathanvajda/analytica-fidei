@@ -35,9 +35,12 @@ The CI workflow runs tests; it does not publish the repository.
 - Inspect supplied lexical annotations, save to IndexedDB, and export/import JSON.
 
 Practice texts are synthetic, not Bible editions. See the [user/import guide](docs/guide.html)
-and [architecture and implementation plan](specs/architecture.md). The full product
-spec is a target, not a list of completed features. This iteration does not include
-RDF export, automatic analysis, corpus ingestion, or an installable offline PWA.
+and [architecture and implementation plan](specs/architecture.md). The
+[completion and data-acquisition specification](specs/DA-Spec_002.md) defines release
+boundaries and the dataset/license shopping list. The full product
+spec is a target, not a list of completed features. The current workbench is installable
+and offline-capable, but does not yet include RDF export, complete parsed-dataset review,
+or production Greek/English/Hebrew annotation and alignment packages.
 
 ## Shared packages
 
